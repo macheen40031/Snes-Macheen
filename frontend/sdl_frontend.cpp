@@ -7,7 +7,6 @@
 #include "frontend_model.hpp"
 #include "emulator_session.hpp"
 #include "libretro_session.hpp"
-#include "libretro_session.hpp"
 #include "frame_pacer.hpp"
 
 #include <algorithm>
