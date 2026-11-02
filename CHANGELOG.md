@@ -1,3 +1,12 @@
+## v1.27 — Settings and interface completion
+
+- Adds an audio-volume setting (0–100%, 5% per step) applied to Snes9x stereo samples before SDL audio queuing.
+- Adds a controller-stick deadzone setting (1000–20000, 500 per step).
+- Adds a Reset Defaults control and immediate status feedback.
+- Supports settings navigation and adjustment from touch, keyboard, and controller D-pad.
+- Rebalances menu-item spacing so all eight sections fit in the metallic console panel.
+- CI and physical-device audio/controller verification are pending.
+
 ## v1.26 — Snes9x cheat engine bridge
 
 - Binds Libretro's cheat reset and cheat set APIs.
