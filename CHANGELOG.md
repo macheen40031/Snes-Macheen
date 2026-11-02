@@ -1,3 +1,11 @@
+## v1.26 — Snes9x cheat engine bridge
+
+- Binds Libretro's cheat reset and cheat set APIs.
+- Supports up to 32 cheat codes per ROM and persists them in a .cht sidecar next to the ROM.
+- Adds the Cheats screen, Android/SDL text entry, add action, clear-all action, and active-code count.
+- Limits each entry to 128 printable characters; actual code parsing/compatibility is delegated to Snes9x.
+- CI and on-device game-specific cheat tests are pending.
+
 ## v1.25 — Two-slot save-state manager
 
 - Binds the Libretro serialize-size, serialize, and unserialize functions.
