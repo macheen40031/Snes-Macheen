@@ -49,8 +49,8 @@ require("gradle-8.13-bin.zip" in wrapper,
         "Gradle wrapper distribution matches the Android plugin requirement")
 require("compileSdk 36" in app_gradle and "minSdk 23" in app_gradle,
         "Android SDK levels are declared")
-require("versionName '1.29'" in app_gradle and "versionCode 39" in app_gradle,
-        "Android package version matches Snes-Macheen v1.29")
+require("versionName '1.30'" in app_gradle and "versionCode 40" in app_gradle,
+        "Android package version matches Snes-Macheen v1.30")
 require("arm64-v8a" in app_gradle and "armeabi-v7a" in app_gradle,
         "64-bit and 32-bit ARM ABIs are declared")
 require("src/main/cpp/CMakeLists.txt" in app_gradle,
@@ -123,6 +123,10 @@ require("SDL_GetQueuedAudioSize" in libretro_source and "maxQueuedBytes" in libr
         "Snes9x audio buffering is bounded to prevent runaway latency")
 require("androidNativeLibraryPath" in libretro_source and "nativeLibraryDir" in libretro_source,
         "Android Snes9x core is resolved from the app native-library directory")
+require("tryLoadCore(resolvedCorePath)" in libretro_source and "tryLoadCore(corePath)" in libretro_source,
+        "Android Snes9x loader retries the library soname after the absolute path")
+require("loaderErrors" in libretro_source and "Snes9x core could not be opened" in libretro_source,
+        "Snes9x loader reports each attempted path and its dynamic-linker error")
 require("missing Libretro function:" in libretro_source and "missingSymbol" in libretro_source,
         "Snes9x loader reports the exact missing Libretro entry point")
 require("kMaximumRomBytes" in libretro_source and "file.bad()" in libretro_source,
