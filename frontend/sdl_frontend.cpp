@@ -168,9 +168,12 @@ std::size_t activeMenuIndex(FrontendScreen screen) {
 void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
               const std::array<SDL_GameController*, 2>& controllers,
               const EmulatorSession& emulator, SDL_Texture* gameTexture,
-              const std::string& inputDiagnostic) {
+              const std::string& inputDiagnostic,
+              SDL_Texture* skinTexture) {
     color(renderer, kBackground);
     SDL_RenderClear(renderer);
+    if (skinTexture != nullptr)
+        SDL_RenderCopy(renderer, skinTexture, nullptr, nullptr);
     drawPanel(renderer, SDL_Rect{12, 10, kWidth - 24, 90});
     drawText(renderer, 38, 30, "SNES-MACHEEN", 4, kText);
     drawText(renderer, 42, 72, "SUPER NINTENDO EMULATOR", 1, kBlue);
@@ -326,6 +329,15 @@ int main(int argc, char** argv) {
     if (renderer == nullptr) renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
     if (renderer == nullptr) { SDL_DestroyWindow(window); SDL_Quit(); return 4; }
     SDL_RenderSetLogicalSize(renderer, kWidth, kHeight);
+    SDL_Texture* skinTexture = nullptr;
+    SDL_Surface* skinSurface = SDL_LoadBMP_RW(
+        SDL_RWFromFile("ui/industrial_console.bmp", "rb"), 1);
+    if (skinSurface != nullptr) {
+        skinTexture = SDL_CreateTextureFromSurface(renderer, skinSurface);
+        SDL_FreeSurface(skinSurface);
+    }
+    if (skinTexture == nullptr)
+        SDL_Log("Industrial UI artwork unavailable: %s", SDL_GetError());
     SDL_GameControllerEventState(SDL_ENABLE);
 
     FrontendModel model;
@@ -614,12 +626,13 @@ int main(int argc, char** argv) {
             }
         }
         renderUi(renderer, model, {slots[0].handle, slots[1].handle},
-                 emulator, gameTexture, inputDiagnostic);
+                 emulator, gameTexture, inputDiagnostic, skinTexture);
         SDL_Delay(framePacer.delayMilliseconds());
     }
 
     emulator.saveBatteryRam();
     for (auto& slot : slots) if (slot.handle != nullptr) SDL_GameControllerClose(slot.handle);
+    if (skinTexture != nullptr) SDL_DestroyTexture(skinTexture);
     if (gameTexture != nullptr) SDL_DestroyTexture(gameTexture);
     SDL_DestroyRenderer(renderer);
     SDL_DestroyWindow(window);
