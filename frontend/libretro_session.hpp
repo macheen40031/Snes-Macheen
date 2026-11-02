@@ -14,6 +14,8 @@ public:
     void unload() noexcept;
     void runFrame();
     void setControllerState(unsigned player, uint16_t buttons) noexcept;
+    void setAudioVolumePercent(int percent) noexcept;
+    int audioVolumePercent() const noexcept;
     bool loaded() const noexcept { return gameLoaded; }
     const std::string& status() const noexcept { return message; }
     const std::vector<uint32_t>& framebuffer() const noexcept { return pixels; }
@@ -38,6 +40,7 @@ private:
     uint16_t pads[2]{};
     uint32_t audioDevice = 0;
     int audioFrequency = 0;
+    int volumePercent = 100;
     std::string currentRomPath;
     std::vector<std::string> currentCheats;
 
