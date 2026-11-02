@@ -5,7 +5,9 @@
 
 #include "controller_mapper.hpp"
 #include "frontend_model.hpp"
-#include "emulator_session.hpp"\n#include "libretro_session.hpp"
+#include "emulator_session.hpp"
+#include "libretro_session.hpp"
+#include "libretro_session.hpp"
 #include "frame_pacer.hpp"
 
 #include <algorithm>
@@ -181,7 +183,8 @@ std::size_t activeMenuIndex(FrontendScreen screen) {
 
 void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
               const std::array<SDL_GameController*, 2>& controllers,
-              const EmulatorSession& emulator, SDL_Texture* gameTexture,
+              const EmulatorSession& emulator, const LibretroSession& snes9x,
+              bool usingSnes9x, SDL_Texture* gameTexture, SDL_Texture* coreTexture,
               const std::string& inputDiagnostic,
               SDL_Texture* skinTexture) {
     color(renderer, kBackground);
@@ -256,17 +259,18 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
         drawText(renderer, 360, 254, "INDUSTRIAL METAL UI CONCEPT", 1, kMuted);
     } else if (model.screen() == FrontendScreen::Playing) {
         drawText(renderer, 360, 130, "NOW PLAYING", 2, kRed);
-        if (gameTexture != nullptr) {
+        if ((usingSnes9x && coreTexture != nullptr) || (!usingSnes9x && gameTexture != nullptr)) {
             const SDL_Rect viewport{446, 164, 430, 376};
             fill(renderer, SDL_Rect{438, 156, 446, 392}, kPanelDark);
             outline(renderer, SDL_Rect{438, 156, 446, 392}, kPanelLight, 2);
-            SDL_RenderCopy(renderer, gameTexture, nullptr, &viewport);
+            SDL_RenderCopy(renderer, usingSnes9x ? coreTexture : gameTexture, nullptr, &viewport);
         } else {
             drawText(renderer, 360, 220, "VIDEO TEXTURE UNAVAILABLE", 2, kMuted);
         }
         drawText(renderer, 360, 558, "ESC / CONTROLLER B: RETURN TO LIBRARY", 1, kMuted);
-        drawText(renderer, 360, 578, emulator.status(), 1,
-                 emulator.state() == EmulatorSession::State::Faulted ? SDL_Color{255, 150, 110, 255} : kMuted);
+        const std::string gameStatus = usingSnes9x ? snes9x.status() : emulator.status();
+        drawText(renderer, 360, 578, gameStatus, 1,
+                 !usingSnes9x && emulator.state() == EmulatorSession::State::Faulted ? SDL_Color{255, 150, 110, 255} : kMuted);
     } else {
         drawText(renderer, 360, 136, "SYSTEM READY", 3, kRed);
         drawText(renderer, 360, 220, "SELECT GAME LIBRARY TO BROWSE ROM FILES", 1, kText);
@@ -358,6 +362,9 @@ int main(int argc, char** argv) {
     FrontendModel model;
     ControllerMapper mapper;
     EmulatorSession emulator;
+    LibretroSession snes9x;
+    bool usingSnes9x = false;
+    SDL_Texture* coreTexture = nullptr;
     SDL_Texture* gameTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
         SDL_TEXTUREACCESS_STREAMING, static_cast<int>(PPU::SCREEN_WIDTH),
         static_cast<int>(PPU::SCREEN_HEIGHT));
@@ -382,22 +389,34 @@ int main(int argc, char** argv) {
             model.setStatusMessage("ROM directory is not available. Choose a ROM folder.");
     }
 
-    std::string activeRomPath;\n    auto launchSelectedGame = [&]() {
+    std::string activeRomPath;
+    std::string activeRomPath;
+    auto launchSelectedGame = [&]() {
         const GameEntry* selected = model.selectedGame();
         if (selected == nullptr) {
             model.setStatusMessage("Select a ROM before launching.");
             return;
         }
-        if (emulator.loadRom(selected->path.string())) {
+        activeRomPath = selected->path.string();
+        usingSnes9x = snes9x.loadRom("libsnes9x_libretro_android.so", activeRomPath);
+        if (usingSnes9x) {
             model.enterPlaying(selected->title);
+            model.setStatusMessage("Snes9x core loaded.");
+        } else if (emulator.loadRom(activeRomPath)) {
+            model.enterPlaying(selected->title);
+            model.setStatusMessage("Snes9x unavailable; prototype fallback is active.");
         } else {
-            model.setStatusMessage(emulator.status());
+            model.setStatusMessage(snes9x.status() + " / " + emulator.status());
         }
     };
     auto goBack = [&]() {
         if (model.screen() == FrontendScreen::Playing) {
-            emulator.saveBatteryRam();
+            if (usingSnes9x && !activeRomPath.empty()) snes9x.saveRam(activeRomPath + ".srm");
+            else emulator.saveBatteryRam();
             emulator.unload();
+            snes9x.unload();
+            usingSnes9x = false;
+            if (coreTexture != nullptr) { SDL_DestroyTexture(coreTexture); coreTexture = nullptr; }
             model.returnToLibrary();
             model.setStatusMessage("Returned to game library.");
         } else {
@@ -625,6 +644,8 @@ int main(int argc, char** argv) {
         // serial ports. This also clears inputs after controller disconnects.
         emulator.setControllerState(0, mapper.state(0));
         emulator.setControllerState(1, mapper.state(1));
+        snes9x.setControllerState(0, mapper.state(0));
+        snes9x.setControllerState(1, mapper.state(1));
 
         if (model.screen() == FrontendScreen::Playing) {
             if (usingSnes9x && snes9x.loaded()) {
