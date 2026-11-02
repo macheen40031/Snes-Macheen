@@ -1,4 +1,4 @@
-# Snes-Macheen v1.29
+# Snes-Macheen v1.31
 
 Snes-Macheen is an Android/desktop SNES emulator frontend with an industrial console UI. Version 1.23 introduced the Libretro Snes9x backend for Android. On Android, Snes9x is now the only gameplay backend; the incomplete in-development C++ core is never used as a fallback for retail cartridges.
 
@@ -38,6 +38,13 @@ Snes-Macheen is an Android/desktop SNES emulator frontend with an industrial con
 - Fixes the runtime core filename so it matches the library downloaded and packaged by CI.
 - Reports the exact unsupported 65C816 opcode and program-bank address when the prototype fallback faults.
 - Preserves the existing ROM picker, persistent ROM folder, controller navigation, and industrial interface.
+
+## v1.31 immersive display and controller support
+
+- Hides Android status and navigation bars for an edge-to-edge game display, with transient reveal by swiping from the screen edge.
+- Reapplies immersive mode after Android resumes the app or restores window focus.
+- Retains SDL's standardized Bluetooth/USB game-controller discovery, hot-plug, SNES button mapping, and analog-stick support.
+- The controller code is implemented, but the exact Bluetooth controller and phone still need a real-device test.
 
 ## v1.30 Android core lookup fallback
 
