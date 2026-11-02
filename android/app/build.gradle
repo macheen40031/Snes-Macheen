@@ -1,7 +1,7 @@
 plugins {
     id 'com.android.application'
 }
-// v1.30 Android Snes9x core lookup fallback build.
+// v1.31 immersive full-screen and Bluetooth controller readiness build.
 android {
     namespace 'com.snesmacheen'
     compileSdk 36
@@ -9,8 +9,8 @@ android {
         applicationId 'com.snesmacheen'
         minSdk 23
         targetSdk 36
-        versionCode 40
-        versionName '1.30'
+        versionCode 41
+        versionName '1.31'
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
         externalNativeBuild {
             cmake {
