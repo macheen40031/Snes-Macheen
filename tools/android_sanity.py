@@ -49,8 +49,8 @@ require("gradle-8.13-bin.zip" in wrapper,
         "Gradle wrapper distribution matches the Android plugin requirement")
 require("compileSdk 36" in app_gradle and "minSdk 23" in app_gradle,
         "Android SDK levels are declared")
-require("versionName '1.28'" in app_gradle and "versionCode 38" in app_gradle,
-        "Android package version matches Snes-Macheen v1.27")
+require("versionName '1.29'" in app_gradle and "versionCode 39" in app_gradle,
+        "Android package version matches Snes-Macheen v1.29")
 require("arm64-v8a" in app_gradle and "armeabi-v7a" in app_gradle,
         "64-bit and 32-bit ARM ABIs are declared")
 require("src/main/cpp/CMakeLists.txt" in app_gradle,
@@ -123,6 +123,14 @@ require("SDL_GetQueuedAudioSize" in libretro_source and "maxQueuedBytes" in libr
         "Snes9x audio buffering is bounded to prevent runaway latency")
 require("androidNativeLibraryPath" in libretro_source and "nativeLibraryDir" in libretro_source,
         "Android Snes9x core is resolved from the app native-library directory")
+require("missing Libretro function:" in libretro_source and "missingSymbol" in libretro_source,
+        "Snes9x loader reports the exact missing Libretro entry point")
+require("kMaximumRomBytes" in libretro_source and "file.bad()" in libretro_source,
+        "ROM loader checks I/O failures and rejects oversized files safely")
+require("kPixelRgb565" in libretro_source and "minimumPitch" in libretro_source,
+        "Libretro video accepts RGB565 and validates row pitch")
+require("std::memcpy" in libretro_source and "red * 255u" in libretro_source,
+        "Libretro RGB565 pixels are safely expanded into ARGB8888")
 require("setControllerPortDevice(0, kDeviceJoypad)" in libretro_source and
         "setControllerPortDevice(1, kDeviceJoypad)" in libretro_source,
         "Libretro core ports are explicitly configured as joypads")
