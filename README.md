@@ -1,6 +1,14 @@
-# Snes-Macheen v1.23
+# Snes-Macheen v1.24
 
 Snes-Macheen is an Android/desktop SNES emulator frontend with an industrial console UI. Version 1.23 introduces the Libretro Snes9x backend for Android, while retaining the in-development C++ core as a diagnostic fallback.
+
+## v1.24 changes
+
+- Connects Snes9x stereo audio callbacks to SDL queued audio.
+- Bounds queued audio to approximately 250 ms and drops excess samples rather than allowing latency to grow without limit.
+- Treats audio-device initialization as optional so devices without an available audio driver can still launch the emulator UI.
+- Resolves the bundled Snes9x core through Android's native-library directory.
+- Configures both Libretro controller ports as joypads.
 
 ## v1.23 changes
 
