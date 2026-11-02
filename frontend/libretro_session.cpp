@@ -103,6 +103,9 @@ public:
     CORE_FN(reset, void(*)());
     CORE_FN(getMemoryData, void*(*)(unsigned));
     CORE_FN(getMemorySize, std::size_t(*)(unsigned));
+    CORE_FN(serializeSize, std::size_t(*)());
+    CORE_FN(serialize, bool(*)(void*, std::size_t));
+    CORE_FN(unserialize, bool(*)(const void*, std::size_t));
 
     template<class T> bool bind(void* handle, T& target, const char* symbol) {
         target = reinterpret_cast<T>(dlsym(handle, symbol));
@@ -124,7 +127,10 @@ public:
             bind(h, unloadGame, "retro_unload_game") &&
             bind(h, run, "retro_run") && bind(h, reset, "retro_reset") &&
             bind(h, getMemoryData, "retro_get_memory_data") &&
-            bind(h, getMemorySize, "retro_get_memory_size");
+            bind(h, getMemorySize, "retro_get_memory_size") &&
+            bind(h, serializeSize, "retro_serialize_size") &&
+            bind(h, serialize, "retro_serialize") &&
+            bind(h, unserialize, "retro_unserialize");
     }
 };
 #undef CORE_FN
@@ -251,6 +257,77 @@ bool LibretroSession::saveRam(const std::string& path) const {
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
     out.write(data, static_cast<std::streamsize>(size));
     return out.good();
+}
+
+bool LibretroSession::saveState(const std::string& path) {
+    if (!gameLoaded || active != this || !api.serializeSize || !api.serialize) {
+        message = "Save states are unavailable until a Snes9x game is loaded.";
+        return false;
+    }
+    const std::size_t size = api.serializeSize();
+    if (size == 0 || size > 128u * 1024u * 1024u) {
+        message = "Snes9x returned an invalid save-state size.";
+        return false;
+    }
+    std::vector<uint8_t> state(size);
+    if (!api.serialize(state.data(), state.size())) {
+        message = "Snes9x could not serialize the current game state.";
+        return false;
+    }
+
+    const std::string temporaryPath = path + ".tmp";
+    {
+        std::ofstream output(temporaryPath, std::ios::binary | std::ios::trunc);
+        if (!output) {
+            message = "Unable to create the temporary save-state file.";
+            return false;
+        }
+        output.write(reinterpret_cast<const char*>(state.data()),
+                     static_cast<std::streamsize>(state.size()));
+        if (!output.good()) {
+            output.close();
+            std::remove(temporaryPath.c_str());
+            message = "Writing the save-state file failed.";
+            return false;
+        }
+    }
+
+    if (std::rename(temporaryPath.c_str(), path.c_str()) != 0) {
+        std::remove(temporaryPath.c_str());
+        message = "Unable to replace the save-state file.";
+        return false;
+    }
+    message = "Save state written successfully.";
+    return true;
+}
+
+bool LibretroSession::loadState(const std::string& path) {
+    if (!gameLoaded || active != this || !api.serializeSize || !api.unserialize) {
+        message = "Load states are unavailable until a Snes9x game is loaded.";
+        return false;
+    }
+    const std::size_t expectedSize = api.serializeSize();
+    if (expectedSize == 0 || expectedSize > 128u * 1024u * 1024u) {
+        message = "Snes9x returned an invalid save-state size.";
+        return false;
+    }
+
+    std::ifstream input(path, std::ios::binary);
+    if (!input) {
+        message = "No save state exists in this slot yet.";
+        return false;
+    }
+    std::vector<uint8_t> state((std::istreambuf_iterator<char>(input)), {});
+    if (!input.eof() || state.size() != expectedSize) {
+        message = "Save-state file size does not match the active Snes9x core.";
+        return false;
+    }
+    if (!api.unserialize(state.data(), state.size())) {
+        message = "Snes9x rejected this save-state file.";
+        return false;
+    }
+    message = "Save state restored successfully.";
+    return true;
 }
 
 bool LibretroSession::environment(unsigned command, void* data) {
