@@ -11,6 +11,7 @@ enum class FrontendScreen {
     Settings,
     Controllers,
     Saves,
+    Cheats,
     About,
     Playing
 };
