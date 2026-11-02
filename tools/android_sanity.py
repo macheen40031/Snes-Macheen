@@ -49,8 +49,8 @@ require("gradle-8.13-bin.zip" in wrapper,
         "Gradle wrapper distribution matches the Android plugin requirement")
 require("compileSdk 36" in app_gradle and "minSdk 23" in app_gradle,
         "Android SDK levels are declared")
-require("versionName '1.19'" in app_gradle and "versionCode 29" in app_gradle,
-        "Android package version matches Snes-Macheen v1.19")
+require("versionName '1.20'" in app_gradle and "versionCode 30" in app_gradle,
+        "Android package version matches Snes-Macheen v1.20")
 require("arm64-v8a" in app_gradle and "armeabi-v7a" in app_gradle,
         "64-bit and 32-bit ARM ABIs are declared")
 require("src/main/cpp/CMakeLists.txt" in app_gradle,

@@ -30,8 +30,12 @@ constexpr SDL_Color kPanelLight{66, 77, 87, 255};
 constexpr SDL_Color kPanelDark{8, 12, 17, 255};
 constexpr SDL_Color kText{226, 235, 242, 255};
 constexpr SDL_Color kMuted{142, 158, 171, 255};
-constexpr SDL_Color kBlue{28, 160, 255, 255};
+constexpr SDL_Color kBlue{74, 174, 255, 255};
 constexpr SDL_Color kBlueDark{10, 65, 105, 255};
+constexpr SDL_Color kRed{238, 54, 64, 255};
+constexpr SDL_Color kRedDark{93, 22, 30, 255};
+constexpr SDL_Color kSteel{48, 57, 66, 255};
+constexpr SDL_Color kSteelHighlight{105, 118, 130, 255};
 constexpr SDL_Color kGreen{70, 216, 138, 255};
 
 struct Glyph { char character; std::array<uint8_t, 7> rows; };
@@ -112,10 +116,19 @@ void drawBolt(SDL_Renderer* renderer, int x, int y) {
 }
 
 void drawPanel(SDL_Renderer* renderer, SDL_Rect rect) {
-    fill(renderer, rect, kPanel);
-    outline(renderer, rect, kPanelLight, 3);
-    SDL_Rect inner{rect.x + 7, rect.y + 7, rect.w - 14, rect.h - 14};
-    outline(renderer, inner, kPanelDark, 2);
+    fill(renderer, rect, kSteel);
+    // Fine horizontal machining marks give the panel a brushed-steel finish.
+    for (int y = rect.y + 5; y < rect.y + rect.h - 5; y += 7) {
+        color(renderer, (y / 7) % 2 == 0 ? SDL_Color{57, 67, 77, 255}
+                                             : SDL_Color{43, 51, 60, 255});
+        SDL_RenderDrawLine(renderer, rect.x + 5, y, rect.x + rect.w - 6, y);
+    }
+    outline(renderer, rect, kSteelHighlight, 3);
+    SDL_Rect bevel{rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 8};
+    outline(renderer, bevel, kPanelDark, 2);
+    SDL_Rect inner{rect.x + 8, rect.y + 8, rect.w - 16, rect.h - 16};
+    outline(renderer, inner, kPanelLight, 1);
+    fill(renderer, SDL_Rect{rect.x + 18, rect.y + 5, rect.w - 36, 3}, SDL_Color{125, 137, 147, 255});
     drawBolt(renderer, rect.x + 13, rect.y + 13);
     drawBolt(renderer, rect.x + rect.w - 13, rect.y + 13);
     drawBolt(renderer, rect.x + 13, rect.y + rect.h - 13);
@@ -124,18 +137,32 @@ void drawPanel(SDL_Renderer* renderer, SDL_Rect rect) {
 
 void drawButton(SDL_Renderer* renderer, SDL_Rect rect, const std::string& label,
                 bool selected) {
-    fill(renderer, rect, selected ? SDL_Color{13, 53, 82, 255} : SDL_Color{20, 27, 34, 255});
-    outline(renderer, rect, selected ? kBlue : kPanelLight, selected ? 3 : 1);
-    drawText(renderer, rect.x + 18, rect.y + 12, label, 2, kText);
+    fill(renderer, rect, selected ? SDL_Color{66, 25, 31, 255} : SDL_Color{19, 25, 31, 255});
+    outline(renderer, rect, selected ? kRed : kSteelHighlight, selected ? 3 : 1);
+    outline(renderer, SDL_Rect{rect.x + 3, rect.y + 3, rect.w - 6, rect.h - 6},
+            selected ? kRedDark : kPanelDark, 1);
     if (selected) {
-        fill(renderer, SDL_Rect{rect.x + rect.w - 12, rect.y + 8, 4, rect.h - 16}, kBlue);
+        fill(renderer, SDL_Rect{rect.x + 7, rect.y + 7, 3, rect.h - 14}, kRed);
+        fill(renderer, SDL_Rect{rect.x + rect.w - 10, rect.y + 7, 3, rect.h - 14}, kRed);
     }
+    drawText(renderer, rect.x + 18, rect.y + 12, label, 2, kText);
 }
 
 std::string controllerName(SDL_GameController* controller) {
     if (controller == nullptr) return "NOT CONNECTED";
     const char* name = SDL_GameControllerName(controller);
     return name != nullptr ? name : "CONTROLLER CONNECTED";
+}
+
+std::size_t activeMenuIndex(FrontendScreen screen) {
+    switch (screen) {
+    case FrontendScreen::GameLibrary: return 0;
+    case FrontendScreen::Settings: return 2;
+    case FrontendScreen::Controllers: return 3;
+    case FrontendScreen::Saves: return 4;
+    case FrontendScreen::About: return 5;
+    default: return 0;
+    }
 }
 
 void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
@@ -149,23 +176,20 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
     drawText(renderer, 760, 44, "V2 FRONTEND PREVIEW", 1, kMuted);
 
     drawPanel(renderer, SDL_Rect{12, 112, 310, 492});
-    drawText(renderer, 34, 132, "MAIN MENU", 2, kBlue);
+    drawText(renderer, 34, 132, "MAIN MENU", 2, kRed);
     const auto& items = model.mainMenuItems();
-    if (model.screen() == FrontendScreen::MainMenu) {
-        for (std::size_t i = 0; i < items.size(); ++i) {
-            drawButton(renderer, SDL_Rect{30, 170 + static_cast<int>(i) * 61, 274, 48},
-                       items[i], i == model.selectedIndex());
-        }
-    } else {
-        for (std::size_t i = 0; i < items.size(); ++i)
-            drawButton(renderer, SDL_Rect{30, 170 + static_cast<int>(i) * 61, 274, 48},
-                       items[i], false);
-        drawButton(renderer, SDL_Rect{30, 548, 274, 40}, "BACK TO MENU", false);
+    const std::size_t activeIndex = model.screen() == FrontendScreen::MainMenu
+        ? model.selectedIndex() : activeMenuIndex(model.screen());
+    for (std::size_t i = 0; i < items.size(); ++i) {
+        drawButton(renderer, SDL_Rect{30, 164 + static_cast<int>(i) * 52, 274, 43},
+                   items[i], i == activeIndex);
     }
+    if (model.screen() != FrontendScreen::MainMenu)
+        drawButton(renderer, SDL_Rect{30, 548, 274, 40}, "BACK TO MENU", false);
 
     drawPanel(renderer, SDL_Rect{334, 112, 654, 492});
     if (model.screen() == FrontendScreen::GameLibrary) {
-        drawText(renderer, 360, 136, "GAME LIBRARY", 3, kBlue);
+        drawText(renderer, 360, 136, "GAME LIBRARY", 3, kRed);
         const auto& games = model.games();
         if (games.empty()) {
             drawText(renderer, 360, 206, "NO ROMS FOUND", 2, kMuted);
@@ -186,7 +210,7 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
         }
         drawText(renderer, 360, 566, "ENTER SELECT   UP/DOWN BROWSE   ESC BACK", 1, kMuted);
     } else if (model.screen() == FrontendScreen::Controllers) {
-        drawText(renderer, 360, 136, "CONTROLLER SETUP", 3, kBlue);
+        drawText(renderer, 360, 136, "CONTROLLER SETUP", 3, kRed);
         drawText(renderer, 360, 204, "PLAYER 1", 2, kText);
         drawText(renderer, 360, 238, controllerName(controllers[0]), 1,
                  controllers[0] ? kGreen : kMuted);
@@ -196,22 +220,22 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
         drawText(renderer, 360, 406, "SDL GAME CONTROLLER EVENTS", 1, kMuted);
         drawText(renderer, 360, 430, "DS4 PAIRING IS DONE IN ANDROID BLUETOOTH SETTINGS", 1, kMuted);
     } else if (model.screen() == FrontendScreen::Settings) {
-        drawText(renderer, 360, 136, "SETTINGS", 3, kBlue);
+        drawText(renderer, 360, 136, "SETTINGS", 3, kRed);
         drawText(renderer, 360, 214, "VIDEO / DISPLAY", 2, kText);
         drawText(renderer, 360, 254, "AUDIO", 2, kText);
         drawText(renderer, 360, 294, "EMULATION", 2, kText);
         drawText(renderer, 360, 334, "CONTROLS", 2, kText);
         drawText(renderer, 360, 406, "SETTING CONTROLS WILL BE CONNECTED IN A LATER BUILD", 1, kMuted);
     } else if (model.screen() == FrontendScreen::Saves) {
-        drawText(renderer, 360, 136, "SAVES / STATES", 3, kBlue);
+        drawText(renderer, 360, 136, "SAVES / STATES", 3, kRed);
         drawText(renderer, 360, 220, "BATTERY SRAM IS SUPPORTED BY THE CORE", 1, kText);
         drawText(renderer, 360, 254, "SAVE STATES ARE NOT IMPLEMENTED YET", 1, kMuted);
     } else if (model.screen() == FrontendScreen::About) {
-        drawText(renderer, 360, 136, "ABOUT SNES-MACHEEN", 3, kBlue);
+        drawText(renderer, 360, 136, "ABOUT SNES-MACHEEN", 3, kRed);
         drawText(renderer, 360, 220, "ORIGINAL C++ 65C816 / SNES EMULATOR PROJECT", 1, kText);
         drawText(renderer, 360, 254, "INDUSTRIAL METAL UI CONCEPT", 1, kMuted);
     } else if (model.screen() == FrontendScreen::Playing) {
-        drawText(renderer, 360, 130, "NOW PLAYING", 2, kBlue);
+        drawText(renderer, 360, 130, "NOW PLAYING", 2, kRed);
         if (gameTexture != nullptr) {
             const SDL_Rect viewport{446, 164, 430, 376};
             fill(renderer, SDL_Rect{438, 156, 446, 392}, kPanelDark);
@@ -224,7 +248,7 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
         drawText(renderer, 360, 578, emulator.status(), 1,
                  emulator.state() == EmulatorSession::State::Faulted ? SDL_Color{255, 150, 110, 255} : kMuted);
     } else {
-        drawText(renderer, 360, 136, "SYSTEM READY", 3, kBlue);
+        drawText(renderer, 360, 136, "SYSTEM READY", 3, kRed);
         drawText(renderer, 360, 220, "SELECT GAME LIBRARY TO BROWSE ROM FILES", 1, kText);
         drawText(renderer, 360, 254, "CONTROLLER INPUT FOUNDATION AVAILABLE", 1, kMuted);
     }
@@ -291,7 +315,7 @@ int main(int argc, char** argv) {
         return 2;
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
-    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     SDL_Window* window = SDL_CreateWindow("Snes-Macheen", SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED, kWidth, kHeight, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (window == nullptr) { SDL_Quit(); return 3; }
@@ -381,18 +405,45 @@ int main(int argc, char** argv) {
     callAndroidPickerMethod("importPersistedRomFolder");
 #endif
 
+    auto openMenuItem = [&](std::size_t index) {
+        switch (index) {
+        case 0: model.navigateTo(FrontendScreen::GameLibrary); model.setStatusMessage("Choose a game from your library."); break;
+        case 1:
+#ifdef __ANDROID__
+            if (!callAndroidPickerMethod("openRomPicker")) model.setStatusMessage("Android ROM picker could not be opened.");
+            else model.setStatusMessage("Choose a supported SNES ROM file.");
+#else
+            model.setStatusMessage("ROM file picker is available in the Android build.");
+#endif
+            break;
+        case 2: model.navigateTo(FrontendScreen::Settings); model.setStatusMessage("Settings panel selected."); break;
+        case 3: model.navigateTo(FrontendScreen::Controllers); model.setStatusMessage("Controller setup selected."); break;
+        case 4: model.navigateTo(FrontendScreen::Saves); model.setStatusMessage("Save and state panel selected."); break;
+        case 5: model.navigateTo(FrontendScreen::About); model.setStatusMessage("About Snes-Macheen."); break;
+        case 6:
+#ifdef __ANDROID__
+            if (!callAndroidPickerMethod("openRomFolderPicker")) model.setStatusMessage("Android ROM folder picker could not be opened.");
+            else model.setStatusMessage("Choose a folder containing your SNES ROM files.");
+#else
+            model.setStatusMessage("Persistent ROM folder access is available in the Android build.");
+#endif
+            break;
+        default: break;
+        }
+    };
     auto handlePointerTap = [&](int x, int y) {
         if (x >= 30 && x <= 304) {
-            if (model.screen() == FrontendScreen::MainMenu) {
-                for (std::size_t i = 0; i < model.mainMenuItems().size(); ++i) {
-                    const int top = 170 + static_cast<int>(i) * 61;
-                    if (y >= top && y < top + 48 && model.selectIndex(i)) {
-                        confirm();
-                        return;
-                    }
+            for (std::size_t i = 0; i < model.mainMenuItems().size(); ++i) {
+                const int top = 164 + static_cast<int>(i) * 52;
+                if (y >= top && y < top + 43) {
+                    if (model.screen() == FrontendScreen::MainMenu) model.selectIndex(i);
+                    openMenuItem(i);
+                    return;
                 }
-            } else if (y >= 548 && y <= 595) {
-                goBack();
+            }
+            if (model.screen() != FrontendScreen::MainMenu && y >= 548 && y <= 595) {
+                model.navigateTo(FrontendScreen::MainMenu);
+                model.setStatusMessage("Returned to main menu.");
                 return;
             }
         }
@@ -438,6 +489,21 @@ int main(int argc, char** argv) {
             if (event.type == SDL_QUIT) running = false;
             else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
                 handlePointerTap(event.button.x, event.button.y);
+            } else if (event.type == SDL_FINGERDOWN) {
+                int windowWidth = kWidth;
+                int windowHeight = kHeight;
+                SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+                const float scale = std::min(
+                    static_cast<float>(windowWidth) / static_cast<float>(kWidth),
+                    static_cast<float>(windowHeight) / static_cast<float>(kHeight));
+                const float offsetX = (static_cast<float>(windowWidth) - kWidth * scale) * 0.5f;
+                const float offsetY = (static_cast<float>(windowHeight) - kHeight * scale) * 0.5f;
+                const float pixelX = event.tfinger.x * static_cast<float>(windowWidth);
+                const float pixelY = event.tfinger.y * static_cast<float>(windowHeight);
+                const int logicalX = static_cast<int>((pixelX - offsetX) / scale);
+                const int logicalY = static_cast<int>((pixelY - offsetY) / scale);
+                if (logicalX >= 0 && logicalX < kWidth && logicalY >= 0 && logicalY < kHeight)
+                    handlePointerTap(logicalX, logicalY);
             }
             else if (event.type == SDL_DROPFILE) {
                 const std::string droppedValue = event.drop.file != nullptr ? event.drop.file : "";

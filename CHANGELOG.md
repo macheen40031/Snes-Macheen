@@ -1,5 +1,13 @@
 # Changelog
 
+## v1.20 — Industrial UI and touch navigation
+- Redesigned the SDL interface with brushed-steel panels, bevels, rivets, and red selection accents.
+- Reworked the left navigation so menu entries remain selectable from every submenu.
+- Added direct SDL finger-touch handling with correct letterbox-aware coordinate mapping.
+- Separated synthesized mouse events from native finger events to prevent duplicate taps.
+- Bumped Android versionCode/versionName to 30 / 1.20.
+
+
 ## v1.19 — Persistent ROM Folder
 - Added an Android **ROM FOLDER** menu option using the Storage Access Framework.
 - Persists the user's selected folder read permission across app launches.

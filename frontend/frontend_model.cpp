@@ -155,3 +155,7 @@ void FrontendModel::setStatusMessage(std::string message) {
 void FrontendModel::returnToLibrary() noexcept {
     setScreen(FrontendScreen::GameLibrary);
 }
+
+void FrontendModel::navigateTo(FrontendScreen screen) noexcept {
+    setScreen(screen);
+}

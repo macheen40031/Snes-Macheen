@@ -1,0 +1,17 @@
+SNES-MACHEEN v1.20 SOURCE UPDATE
+
+This is an overlay update for the existing Snes-Macheen repository.
+Extract these files into the ROOT of your existing Snes-Macheen project and allow the listed files to be replaced.
+
+IMPORTANT:
+- This update intentionally does NOT include .github/workflows/android-apk.yml.
+- Keep the permanent APK-signing workflow already committed in your GitHub repository.
+- Keep all GitHub repository secrets and your local keystore/private key unchanged.
+- The Android version is now 1.20 / versionCode 30.
+
+After overlaying the files, run:
+  bash quality.sh
+
+Then commit and push the changed files to the existing GitHub repository. GitHub Actions should build the signed APK using the signing workflow already stored in GitHub.
+
+This update improves the metallic UI and touch navigation. It does NOT complete the SNES CPU instruction set; the Super Mario World unsupported-opcode issue remains a separate emulator-core task.

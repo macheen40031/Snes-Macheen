@@ -51,6 +51,7 @@ public:
     void enterPlaying(const std::string& gameTitle);
     void setStatusMessage(std::string message);
     void returnToLibrary() noexcept;
+    void navigateTo(FrontendScreen screen) noexcept;
 
 private:
     FrontendScreen currentScreen = FrontendScreen::MainMenu;
