@@ -1,6 +1,7 @@
 plugins {
     id 'com.android.application'
 }
+// v1.30 Android Snes9x core lookup fallback build.
 android {
     namespace 'com.snesmacheen'
     compileSdk 36
