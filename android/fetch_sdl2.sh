@@ -15,7 +15,7 @@ fi
 
 command -v tar >/dev/null 2>&1 || { echo "Missing required tool: tar" >&2; exit 2; }
 if command -v curl >/dev/null 2>&1; then
-    DOWNLOADER=(curl -fL --retry 2 --connect-timeout 20)
+    DOWNLOADER=(curl -fL --retry 5 --retry-all-errors --retry-delay 5 --connect-timeout 30 --max-time 300)
 elif command -v wget >/dev/null 2>&1; then
     DOWNLOADER=(wget -O)
 else
