@@ -31,6 +31,7 @@ REQUIRED = [
     "android/settings.gradle",
     "android/app/build.gradle",
     "android/app/src/main/AndroidManifest.xml",
+    "android/app/src/main/java/com/snesmacheen/SnesMacheenActivity.java",
     "android/app/src/main/cpp/CMakeLists.txt",
     "android/fetch_sdl2.sh",
     "android/build_android.sh",
@@ -40,6 +41,7 @@ REQUIRED = [
     "android/CLOUD_BUILD.md",
     "tools/android_sanity.py",
     "tools/sdl2_compile_stub/SDL.h",
+    "tools/sdl2_compile_stub/SDL_system.h",
 ]
 SOURCE_SUFFIXES = {".cpp", ".hpp", ".h", ".cc", ".cxx"}
 errors = []

@@ -1,5 +1,21 @@
 # Changelog
 
+## v1.19 — Persistent ROM Folder
+- Added an Android **ROM FOLDER** menu option using the Storage Access Framework.
+- Persists the user's selected folder read permission across app launches.
+- Imports supported ROM files from the selected folder into app-private storage and refreshes the native game library.
+- Re-imports the saved folder on subsequent launches when the persisted grant remains valid.
+
+## v1.18 — Android ROM File Picker
+- Added a custom SDLActivity subclass with Android Storage Access Framework integration.
+- The Load ROM menu item opens the Android document picker for `.sfc`, `.smc`, `.fig`, and `.swc` files.
+- Selected ROMs are copied to app-private storage and passed back to the native frontend without broad storage permissions.
+
+## v1.17 — Android Touch Navigation
+- Added tap support for main-menu entries, library rows, and back navigation.
+- Created an app-private ROM folder on Android startup instead of scanning an unavailable working-directory ROMs folder.
+- Added clear on-screen touch guidance while preserving keyboard and Bluetooth-controller navigation.
+
 ## v1.16 — Release quality and Android scaffold repair
 
 - Added the missing Android app Gradle module configuration.

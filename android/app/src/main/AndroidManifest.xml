@@ -7,7 +7,7 @@
         android:hardwareAccelerated="true"
         android:supportsRtl="true">
         <activity
-            android:name="org.libsdl.app.SDLActivity"
+            android:name="com.snesmacheen.SnesMacheenActivity"
             android:configChanges="keyboard|keyboardHidden|orientation|screenSize|smallestScreenSize|screenLayout|uiMode|density|navigation"
             android:exported="true"
             android:launchMode="singleTask"

@@ -46,6 +46,7 @@ public:
     void handle(FrontendAction action);
     bool scanGameDirectory(const std::filesystem::path& directory);
     bool selectGame(std::size_t index);
+    bool selectIndex(std::size_t index) noexcept;
     const GameEntry* selectedGame() const noexcept;
     void enterPlaying(const std::string& gameTitle);
     void setStatusMessage(std::string message);

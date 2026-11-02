@@ -1,14 +1,16 @@
 SNES-MACHEEN RELEASE MANIFEST
-Version: 1.15
+Version: 1.19
 Project: Snes-Macheen
-Package: source ZIP (not an APK)
-Previous milestone: 1.14
-Regression checks passed: 190
-Android project structure checks passed: 31
+Package: source ZIP (Android APK is produced by the GitHub Actions workflow)
+Previous milestone: 1.18
+Host regression checks passed: 193
+Android project/source checks passed: 39
 Strict clean host build: PASS
 CTest: PASS
 AddressSanitizer: PASS
 UndefinedBehaviorSanitizer: PASS
-SDL2 source syntax check: PASS (test stub; no native SDL2 link)
-Android Gradle/APK build: NOT RUN (SDK/NDK/Gradle/SDL2 source unavailable)
-Android versionCode: 25
+SDL2 frontend syntax check: PASS (host stub)
+Android-conditional JNI/C++ syntax check: PASS (JDK JNI headers and SDL API stubs)
+Android Gradle/APK build for this source revision: NOT RUN in this environment
+Android versionCode: 29
+Android versionName: 1.19

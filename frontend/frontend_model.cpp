@@ -7,7 +7,7 @@
 
 FrontendModel::FrontendModel()
     : menuItems{"Game Library", "Load ROM", "Settings", "Controllers",
-                "Saves / States", "About"} {}
+                "Saves / States", "About", "ROM FOLDER"} {}
 
 FrontendScreen FrontendModel::screen() const noexcept { return currentScreen; }
 std::size_t FrontendModel::selectedIndex() const noexcept { return currentSelection; }
@@ -123,6 +123,14 @@ bool FrontendModel::scanGameDirectory(const std::filesystem::path& directory) {
     currentSelection = 0;
     status = "Found " + std::to_string(library.size()) + " supported ROM file(s).";
     return !error;
+}
+
+bool FrontendModel::selectIndex(std::size_t index) noexcept {
+    const std::size_t count = currentScreen == FrontendScreen::MainMenu
+        ? menuItems.size() : library.size();
+    if (index >= count) return false;
+    currentSelection = index;
+    return true;
 }
 
 bool FrontendModel::selectGame(std::size_t index) {

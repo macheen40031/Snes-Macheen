@@ -1029,16 +1029,20 @@ int main() {
         FrontendModel ui;
         check(ui.screen() == FrontendScreen::MainMenu,
               "Frontend starts on the main menu");
-        check(ui.mainMenuItems().size() == 6,
-              "Main menu exposes six planned sections");
+        check(ui.mainMenuItems().size() == 7,
+              "Main menu exposes seven planned sections");
         check(ui.selectedIndex() == 0,
               "Main menu initially selects Game Library");
         ui.handle(FrontendAction::Up);
-        check(ui.selectedIndex() == 5,
+        check(ui.selectedIndex() == 6,
               "Main menu selection wraps upward");
         ui.handle(FrontendAction::Down);
         check(ui.selectedIndex() == 0,
               "Main menu selection wraps downward");
+        check(ui.selectIndex(5) && ui.selectedIndex() == 5,
+              "Pointer navigation can select an explicit main-menu row");
+        check(ui.selectIndex(0) && ui.selectedIndex() == 0,
+              "Pointer navigation can return selection to the first menu row");
         ui.handle(FrontendAction::Confirm);
         check(ui.screen() == FrontendScreen::GameLibrary,
               "Confirm opens Game Library");
@@ -1069,6 +1073,8 @@ int main() {
         check(ui.selectGame(1) && ui.selectedGame() != nullptr &&
               ui.selectedGame()->title == "Zelda",
               "Game library selects a valid ROM entry");
+        check(ui.selectIndex(0) && ui.selectedIndex() == 0,
+              "Pointer navigation can select a visible game-library row");
         check(!ui.selectGame(99),
               "Game library rejects an out-of-range selection");
         ui.handle(FrontendAction::Back);

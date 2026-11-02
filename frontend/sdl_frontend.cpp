@@ -1,4 +1,7 @@
 #include <SDL.h>
+#ifdef __ANDROID__
+#include <SDL_system.h>
+#endif
 
 #include "controller_mapper.hpp"
 #include "frontend_model.hpp"
@@ -13,6 +16,10 @@
 #include <filesystem>
 #include <string>
 #include <vector>
+#include <memory>
+#ifdef __ANDROID__
+#include <jni.h>
+#endif
 
 namespace {
 constexpr int kWidth = 1000;
@@ -153,7 +160,7 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
         for (std::size_t i = 0; i < items.size(); ++i)
             drawButton(renderer, SDL_Rect{30, 170 + static_cast<int>(i) * 61, 274, 48},
                        items[i], false);
-        drawText(renderer, 34, 548, "ESC - BACK", 1, kMuted);
+        drawButton(renderer, SDL_Rect{30, 548, 274, 40}, "BACK TO MENU", false);
     }
 
     drawPanel(renderer, SDL_Rect{334, 112, 654, 492});
@@ -228,7 +235,7 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
     }
     color(renderer, kPanelLight);
     SDL_RenderDrawLine(renderer, 24, 610, 976, 610);
-    drawText(renderer, 28, 612, "ARROWS / ENTER / ESC", 1, kMuted);
+    drawText(renderer, 28, 612, "TOUCH MENU ITEMS OR USE ARROWS / ENTER / ESC", 1, kMuted);
     SDL_RenderPresent(renderer);
 }
 
@@ -251,6 +258,32 @@ bool mapControllerButton(SDL_GameControllerButton button, GamepadControl& contro
 }
 
 struct ControllerSlot { SDL_GameController* handle = nullptr; SDL_JoystickID instance = -1; };
+
+#ifdef __ANDROID__
+bool callAndroidPickerMethod(const char* methodName) {
+    auto* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+    jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+    if (env == nullptr || activity == nullptr) return false;
+    jclass activityClass = env->GetObjectClass(activity);
+    if (activityClass == nullptr) {
+        env->DeleteLocalRef(activity);
+        return false;
+    }
+    jmethodID method = env->GetStaticMethodID(activityClass, methodName, "()V");
+    if (method == nullptr) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        env->DeleteLocalRef(activityClass);
+        env->DeleteLocalRef(activity);
+        return false;
+    }
+    env->CallStaticVoidMethod(activityClass, method);
+    const bool success = !env->ExceptionCheck();
+    if (!success) env->ExceptionClear();
+    env->DeleteLocalRef(activityClass);
+    env->DeleteLocalRef(activity);
+    return success;
+}
+#endif
 }
 
 int main(int argc, char** argv) {
@@ -258,6 +291,7 @@ int main(int argc, char** argv) {
         return 2;
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
+    SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "1");
     SDL_Window* window = SDL_CreateWindow("Snes-Macheen", SDL_WINDOWPOS_CENTERED,
         SDL_WINDOWPOS_CENTERED, kWidth, kHeight, SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
     if (window == nullptr) { SDL_Quit(); return 3; }
@@ -274,8 +308,26 @@ int main(int argc, char** argv) {
     SDL_Texture* gameTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
         SDL_TEXTUREACCESS_STREAMING, static_cast<int>(PPU::SCREEN_WIDTH),
         static_cast<int>(PPU::SCREEN_HEIGHT));
-    if (argc > 1) model.scanGameDirectory(std::filesystem::path(argv[1]));
-    else model.scanGameDirectory(std::filesystem::current_path() / "ROMs");
+    std::filesystem::path romDirectory;
+#ifdef __ANDROID__
+    const char* internalStorage = SDL_AndroidGetInternalStoragePath();
+    romDirectory = (internalStorage != nullptr && *internalStorage != '\0')
+        ? std::filesystem::path(internalStorage) / "roms"
+        : std::filesystem::current_path() / "roms";
+#else
+    romDirectory = std::filesystem::current_path() / "ROMs";
+#endif
+    std::error_code directoryError;
+    std::filesystem::create_directories(romDirectory, directoryError);
+    if (!directoryError) model.scanGameDirectory(romDirectory);
+    else model.setStatusMessage("Unable to prepare the private ROM folder.");
+    if (argc > 1) {
+        const std::filesystem::path requestedDirectory(argv[1]);
+        if (std::filesystem::is_directory(requestedDirectory, directoryError))
+            model.scanGameDirectory(requestedDirectory);
+        else
+            model.setStatusMessage("ROM directory is not available. Choose a ROM folder.");
+    }
 
     auto launchSelectedGame = [&]() {
         const GameEntry* selected = model.selectedGame();
@@ -300,8 +352,57 @@ int main(int argc, char** argv) {
         }
     };
     auto confirm = [&]() {
-        if (model.screen() == FrontendScreen::GameLibrary) launchSelectedGame();
-        else model.handle(FrontendAction::Confirm);
+        if (model.screen() == FrontendScreen::GameLibrary) {
+            launchSelectedGame();
+        } else if (model.screen() == FrontendScreen::MainMenu && model.selectedIndex() == 1) {
+#ifdef __ANDROID__
+            if (!callAndroidPickerMethod("openRomPicker"))
+                model.setStatusMessage("Android ROM picker could not be opened.");
+            else
+                model.setStatusMessage("Choose a supported SNES ROM file.");
+#else
+            model.setStatusMessage("ROM file picker is available in the Android build.");
+#endif
+        } else if (model.screen() == FrontendScreen::MainMenu && model.selectedIndex() == 6) {
+#ifdef __ANDROID__
+            if (!callAndroidPickerMethod("openRomFolderPicker"))
+                model.setStatusMessage("Android ROM folder picker could not be opened.");
+            else
+                model.setStatusMessage("Choose a folder containing your SNES ROM files.");
+#else
+            model.setStatusMessage("Persistent ROM folder access is available in the Android build.");
+#endif
+        } else {
+            model.handle(FrontendAction::Confirm);
+        }
+    };
+
+#ifdef __ANDROID__
+    callAndroidPickerMethod("importPersistedRomFolder");
+#endif
+
+    auto handlePointerTap = [&](int x, int y) {
+        if (x >= 30 && x <= 304) {
+            if (model.screen() == FrontendScreen::MainMenu) {
+                for (std::size_t i = 0; i < model.mainMenuItems().size(); ++i) {
+                    const int top = 170 + static_cast<int>(i) * 61;
+                    if (y >= top && y < top + 48 && model.selectIndex(i)) {
+                        confirm();
+                        return;
+                    }
+                }
+            } else if (y >= 548 && y <= 595) {
+                goBack();
+                return;
+            }
+        }
+        if (model.screen() == FrontendScreen::GameLibrary &&
+            x >= 356 && x <= 966 && y >= 190 && y < 568 && !model.games().empty()) {
+            const std::size_t start = model.selectedIndex() > 7 ? model.selectedIndex() - 7 : 0;
+            const std::size_t row = static_cast<std::size_t>((y - 190) / 42);
+            const std::size_t index = start + row;
+            if (index < model.games().size() && model.selectIndex(index)) confirm();
+        }
     };
 
     std::array<ControllerSlot, 2> slots{};
@@ -335,6 +436,33 @@ int main(int argc, char** argv) {
         SDL_Event event;
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
+            else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
+                handlePointerTap(event.button.x, event.button.y);
+            }
+            else if (event.type == SDL_DROPFILE) {
+                const std::string droppedValue = event.drop.file != nullptr ? event.drop.file : "";
+                SDL_free(event.drop.file);
+                if (!droppedValue.empty()) {
+                    const std::filesystem::path droppedPath(droppedValue);
+                    std::error_code dropError;
+                    if (std::filesystem::is_directory(droppedPath, dropError) && !dropError) {
+                        if (model.scanGameDirectory(droppedPath)) {
+                            model.setStatusMessage("Persistent ROM folder imported. " +
+                                std::to_string(model.games().size()) + " supported ROM file(s) ready.");
+                        }
+                    } else if (model.scanGameDirectory(droppedPath.parent_path())) {
+                        const auto& games = model.games();
+                        const auto found = std::find_if(games.begin(), games.end(),
+                            [&](const GameEntry& game) { return game.path == droppedPath; });
+                        if (found != games.end() &&
+                            model.selectIndex(static_cast<std::size_t>(std::distance(games.begin(), found)))) {
+                            launchSelectedGame();
+                        } else {
+                            model.setStatusMessage("Selected ROM was copied but could not be listed.");
+                        }
+                    }
+                }
+            }
             else if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
                 switch (event.key.keysym.sym) {
                 case SDLK_UP: model.handle(FrontendAction::Up); break;
