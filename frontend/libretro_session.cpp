@@ -317,9 +317,18 @@ bool LibretroSession::loadState(const std::string& path) {
         message = "No save state exists in this slot yet.";
         return false;
     }
-    std::vector<uint8_t> state((std::istreambuf_iterator<char>(input)), {});
-    if (!input.eof() || state.size() != expectedSize) {
+    input.seekg(0, std::ios::end);
+    const std::streamoff fileSize = input.tellg();
+    if (fileSize < 0 || static_cast<uint64_t>(fileSize) != expectedSize) {
         message = "Save-state file size does not match the active Snes9x core.";
+        return false;
+    }
+    input.seekg(0, std::ios::beg);
+    std::vector<uint8_t> state(expectedSize);
+    input.read(reinterpret_cast<char*>(state.data()),
+               static_cast<std::streamsize>(state.size()));
+    if (!input) {
+        message = "Unable to read the complete save-state file.";
         return false;
     }
     if (!api.unserialize(state.data(), state.size())) {
