@@ -336,8 +336,7 @@ int main(int argc, char** argv) {
         skinTexture = SDL_CreateTextureFromSurface(renderer, skinSurface);
         SDL_FreeSurface(skinSurface);
     }
-    if (skinTexture == nullptr)
-        SDL_Log("Industrial UI artwork unavailable: %s", SDL_GetError());
+    // If artwork loading fails, retain the existing renderer background.
     SDL_GameControllerEventState(SDL_ENABLE);
 
     FrontendModel model;
