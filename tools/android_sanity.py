@@ -49,8 +49,8 @@ require("gradle-8.13-bin.zip" in wrapper,
         "Gradle wrapper distribution matches the Android plugin requirement")
 require("compileSdk 36" in app_gradle and "minSdk 23" in app_gradle,
         "Android SDK levels are declared")
-require("versionName '1.26'" in app_gradle and "versionCode 36" in app_gradle,
-        "Android package version matches Snes-Macheen v1.26")
+require("versionName '1.27'" in app_gradle and "versionCode 37" in app_gradle,
+        "Android package version matches Snes-Macheen v1.27")
 require("arm64-v8a" in app_gradle and "armeabi-v7a" in app_gradle,
         "64-bit and 32-bit ARM ABIs are declared")
 require("src/main/cpp/CMakeLists.txt" in app_gradle,
@@ -144,6 +144,16 @@ require("SDL_TEXTINPUT" in sdl_frontend and "SDL_StartTextInput" in sdl_frontend
 require('"CHEAT ENGINE"' in sdl_frontend and '"ADD CHEAT"' in sdl_frontend and
         '"CLEAR ALL"' in sdl_frontend,
         "Industrial UI exposes cheat entry and clear-all controls")
+
+require("setAudioVolumePercent" in libretro_source and "volumePercent" in libretro_source,
+        "Snes9x audio volume adjustment is available at runtime")
+require("audioVolumePercent + direction * 5" in sdl_frontend and
+        "SDL_QueueAudio" in libretro_source,
+        "Settings expose an audio volume adjustment connected to the core audio queue")
+require("mapper.setDeadzone" in sdl_frontend and "controllerDeadzone + direction * 500" in sdl_frontend,
+        "Settings expose a bounded controller-stick deadzone adjustment")
+require('"RESET DEFAULTS"' in sdl_frontend and "settingsSelection" in sdl_frontend,
+        "Settings include a selectable reset-to-defaults action")
 
 if errors:
     print(f"ANDROID SCAFFOLD SANITY: FAILED ({len(errors)} failures / {checks} checks)")
