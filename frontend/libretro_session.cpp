@@ -268,6 +268,16 @@ void LibretroSession::setControllerState(unsigned player, uint16_t buttons) noex
     if (player < 2) pads[player] = buttons;
 }
 
+void LibretroSession::setAudioVolumePercent(int percent) noexcept {
+    volumePercent = std::clamp(percent, 0, 100);
+    if (volumePercent == 0 && audioDevice != 0)
+        SDL_ClearQueuedAudio(audioDevice);
+}
+
+int LibretroSession::audioVolumePercent() const noexcept {
+    return volumePercent;
+}
+
 bool LibretroSession::saveRam(const std::string& path) const {
     if (!gameLoaded || !api.getMemoryData || !api.getMemorySize) return false;
     constexpr unsigned kSaveRam = 0;
@@ -473,7 +483,18 @@ std::size_t LibretroSession::audioBatch(const int16_t* data, std::size_t frames)
 
     const std::size_t bytesToQueue = framesToQueue * kBytesPerFrame;
     if (bytesToQueue > std::numeric_limits<Uint32>::max()) return frames;
-    if (SDL_QueueAudio(active->audioDevice, data,
+    const void* queueData = data;
+    std::vector<int16_t> adjusted;
+    if (active->volumePercent != 100) {
+        adjusted.resize(framesToQueue * 2u);
+        for (std::size_t i = 0; i < adjusted.size(); ++i) {
+            const int32_t sample = static_cast<int32_t>(data[i]);
+            adjusted[i] = static_cast<int16_t>(
+                (sample * static_cast<int32_t>(active->volumePercent)) / 100);
+        }
+        queueData = adjusted.data();
+    }
+    if (SDL_QueueAudio(active->audioDevice, queueData,
                        static_cast<Uint32>(bytesToQueue)) != 0) {
         active->message = "Snes9x audio queue failed: " + std::string(SDL_GetError());
     }
