@@ -49,8 +49,8 @@ require("gradle-8.13-bin.zip" in wrapper,
         "Gradle wrapper distribution matches the Android plugin requirement")
 require("compileSdk 36" in app_gradle and "minSdk 23" in app_gradle,
         "Android SDK levels are declared")
-require("versionName '1.22'" in app_gradle and "versionCode 32" in app_gradle,
-        "Android package version matches Snes-Macheen v1.22")
+require("versionName '1.23'" in app_gradle and "versionCode 33" in app_gradle,
+        "Android package version matches Snes-Macheen v1.23")
 require("arm64-v8a" in app_gradle and "armeabi-v7a" in app_gradle,
         "64-bit and 32-bit ARM ABIs are declared")
 require("src/main/cpp/CMakeLists.txt" in app_gradle,
@@ -105,6 +105,14 @@ require("SDL_MOUSEBUTTONDOWN" in sdl_frontend and "handlePointerTap" in sdl_fron
         "SDL frontend accepts touch-generated and mouse pointer taps")
 require("SDL_AndroidGetInternalStoragePath" in sdl_frontend and "create_directories(romDirectory" in sdl_frontend,
         "Android startup prepares a private ROM directory")
+
+libretro_frontend = (ROOT / "frontend/sdl_frontend.cpp").read_text(encoding="utf-8")
+require('snes9x.loadRom("snes9x_libretro_android.so"' in libretro_frontend,
+        "Frontend loads the exact Snes9x core filename packaged by Android CI")
+workflow = (ROOT / ".github/workflows/android-apk.yml").read_text(encoding="utf-8")
+require("snes9x_libretro_android.so.zip" in workflow and
+        "snes9x_libretro_android.so" in workflow,
+        "Android workflow fetches and verifies the Snes9x core for both ABIs")
 
 if errors:
     print(f"ANDROID SCAFFOLD SANITY: FAILED ({len(errors)} failures / {checks} checks)")
