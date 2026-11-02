@@ -141,7 +141,7 @@ require('romPath + ".cht"' in libretro_source and "currentCheats.size() < 32u" i
         "Cheat codes are restored from a per-ROM sidecar with a bounded slot count")
 require("SDL_TEXTINPUT" in sdl_frontend and "SDL_StartTextInput" in sdl_frontend,
         "Cheat entry accepts text input from the SDL keyboard/Android soft keyboard")
-require('"CHEATS"' in sdl_frontend and '"ADD CHEAT"' in sdl_frontend and
+require('"CHEAT ENGINE"' in sdl_frontend and '"ADD CHEAT"' in sdl_frontend and
         '"CLEAR ALL"' in sdl_frontend,
         "Industrial UI exposes cheat entry and clear-all controls")
 
