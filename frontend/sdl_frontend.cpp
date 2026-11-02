@@ -5,7 +5,7 @@
 
 #include "controller_mapper.hpp"
 #include "frontend_model.hpp"
-#include "emulator_session.hpp"
+#include "emulator_session.hpp"\n#include "libretro_session.hpp"
 #include "frame_pacer.hpp"
 
 #include <algorithm>
@@ -332,7 +332,7 @@ bool callAndroidPickerMethod(const char* methodName) {
 }
 
 int main(int argc, char** argv) {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0)
         return 2;
 
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
@@ -626,22 +626,35 @@ int main(int argc, char** argv) {
         emulator.setControllerState(0, mapper.state(0));
         emulator.setControllerState(1, mapper.state(1));
 
-        if (model.screen() == FrontendScreen::Playing && emulator.loaded()) {
-            // Prototype execution budget only: host input reaches the SNES
-            // serial ports, but CPU/PPU emulation is not cycle-accurate yet.
-            if (emulator.state() != EmulatorSession::State::Halted &&
-                emulator.state() != EmulatorSession::State::Faulted) {
-                for (std::size_t frame = 0; frame < framesDue; ++frame)
-                    emulator.runFrame(2000);
-            }
-            if (gameTexture != nullptr) {
-                const auto& pixels = emulator.framebufferArgb8888();
-                SDL_UpdateTexture(gameTexture, nullptr, pixels.data(),
-                    static_cast<int>(PPU::SCREEN_WIDTH * sizeof(uint32_t)));
+        if (model.screen() == FrontendScreen::Playing) {
+            if (usingSnes9x && snes9x.loaded()) {
+                for (std::size_t frame = 0; frame < framesDue; ++frame) snes9x.runFrame();
+                const auto& pixels = snes9x.framebuffer();
+                if (!pixels.empty()) {
+                    if (coreTexture == nullptr || SDL_QueryTexture(coreTexture, nullptr, nullptr, nullptr, nullptr) != 0) {
+                        if (coreTexture) SDL_DestroyTexture(coreTexture);
+                        coreTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                            SDL_TEXTUREACCESS_STREAMING, static_cast<int>(snes9x.width()),
+                            static_cast<int>(snes9x.height()));
+                    }
+                    if (coreTexture) SDL_UpdateTexture(coreTexture, nullptr, pixels.data(),
+                        static_cast<int>(snes9x.width() * sizeof(uint32_t)));
+                }
+            } else if (emulator.loaded()) {
+                if (emulator.state() != EmulatorSession::State::Halted &&
+                    emulator.state() != EmulatorSession::State::Faulted) {
+                    for (std::size_t frame = 0; frame < framesDue; ++frame) emulator.runFrame(2000);
+                }
+                if (gameTexture != nullptr) {
+                    const auto& pixels = emulator.framebufferArgb8888();
+                    SDL_UpdateTexture(gameTexture, nullptr, pixels.data(),
+                        static_cast<int>(PPU::SCREEN_WIDTH * sizeof(uint32_t)));
+                }
             }
         }
         renderUi(renderer, model, {slots[0].handle, slots[1].handle},
-                 emulator, gameTexture, inputDiagnostic, skinTexture);
+                 emulator, snes9x, usingSnes9x, gameTexture, coreTexture,
+                 inputDiagnostic, skinTexture);
         SDL_Delay(framePacer.delayMilliseconds());
     }
 
