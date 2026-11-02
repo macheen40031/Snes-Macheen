@@ -382,7 +382,7 @@ int main(int argc, char** argv) {
             model.setStatusMessage("ROM directory is not available. Choose a ROM folder.");
     }
 
-    auto launchSelectedGame = [&]() {
+    std::string activeRomPath;\n    auto launchSelectedGame = [&]() {
         const GameEntry* selected = model.selectedGame();
         if (selected == nullptr) {
             model.setStatusMessage("Select a ROM before launching.");
