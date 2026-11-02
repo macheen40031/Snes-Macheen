@@ -26,7 +26,7 @@ fi
 TMP_DIR="$(mktemp -d)"
 trap 'rm -rf "$TMP_DIR"' EXIT
 ARCHIVE="$TMP_DIR/SDL2-$SDL_VERSION.tar.gz"
-URL="https://www.libsdl.org/release/SDL2-$SDL_VERSION.tar.gz"
+URL="https://github.com/libsdl-org/SDL/archive/refs/tags/release-2.32.10.tar.gz"
 echo "Downloading official SDL2 source: $URL"
 if [[ "${DOWNLOADER[0]}" == "curl" ]]; then
     "${DOWNLOADER[@]}" "$URL" -o "$ARCHIVE"
@@ -35,7 +35,7 @@ else
 fi
 
 tar -xzf "$ARCHIVE" -C "$TMP_DIR"
-SDL_SOURCE="$TMP_DIR/SDL2-$SDL_VERSION"
+SDL_SOURCE="$TMP_DIR/SDL-release-$SDL_VERSION"
 [[ -f "$SDL_SOURCE/CMakeLists.txt" ]] || { echo "SDL2 source archive layout was unexpected." >&2; exit 3; }
 [[ -f "$SDL_SOURCE/android-project/app/src/main/java/org/libsdl/app/SDLActivity.java" ]] || {
     echo "SDL2 Android Activity source is missing from the archive." >&2; exit 3;
