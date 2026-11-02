@@ -134,7 +134,7 @@ void LibretroSession::unload() noexcept {
     if (library) dlclose(library);
     library = nullptr;
     if (active == this) active = nullptr;
-    if (audioDevice) { SDL_CloseAudioDevice(static_cast<SDL_AudioDeviceID>(reinterpret_cast<uintptr_t>(audioDevice))); audioDevice = nullptr; }
+    if (audioDevice) { SDL_CloseAudioDevice(audioDevice); audioDevice = 0; }
     pixels.clear();
 }
 
@@ -157,7 +157,7 @@ bool LibretroSession::saveRam(const std::string& path) const {
 bool LibretroSession::environment(unsigned command, void* data) {
     if (command == kEnvSetPixelFormat && data) {
         const auto format = *static_cast<unsigned*>(data);
-        return format == kPixelXrgb8888 || format == kPixelRgb565;
+        return format == kPixelXrgb8888;
     }
     return false;
 }
