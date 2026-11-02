@@ -393,6 +393,38 @@ bool callAndroidPickerMethod(const char* methodName) {
     env->DeleteLocalRef(activity);
     return success;
 }
+
+bool callAndroidStringMethod(const char* methodName, const std::string& value) {
+    auto* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+    jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+    if (env == nullptr || activity == nullptr) return false;
+    jclass activityClass = env->GetObjectClass(activity);
+    if (activityClass == nullptr) {
+        env->DeleteLocalRef(activity);
+        return false;
+    }
+    jmethodID method = env->GetStaticMethodID(
+        activityClass, methodName, "(Ljava/lang/String;)V");
+    if (method == nullptr) {
+        if (env->ExceptionCheck()) env->ExceptionClear();
+        env->DeleteLocalRef(activityClass);
+        env->DeleteLocalRef(activity);
+        return false;
+    }
+    jstring argument = env->NewStringUTF(value.c_str());
+    if (argument == nullptr) {
+        env->DeleteLocalRef(activityClass);
+        env->DeleteLocalRef(activity);
+        return false;
+    }
+    env->CallStaticVoidMethod(activityClass, method, argument);
+    const bool success = !env->ExceptionCheck();
+    if (!success) env->ExceptionClear();
+    env->DeleteLocalRef(argument);
+    env->DeleteLocalRef(activityClass);
+    env->DeleteLocalRef(activity);
+    return success;
+}
 #endif
 }
 
@@ -411,7 +443,15 @@ int main(int argc, char** argv) {
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (renderer == nullptr) renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
     if (renderer == nullptr) { SDL_DestroyWindow(window); SDL_Quit(); return 4; }
-    SDL_RenderSetLogicalSize(renderer, kWidth, kHeight);
+    // The old fixed logical viewport letterboxed on wide Android screens.
+    // Scale the UI to the full renderer output; touch is mapped back below.
+    SDL_RenderSetLogicalSize(renderer, 0, 0);
+    int outputWidth = kWidth;
+    int outputHeight = kHeight;
+    SDL_GetRendererOutputSize(renderer, &outputWidth, &outputHeight);
+    const float renderScaleX = static_cast<float>(outputWidth) / static_cast<float>(kWidth);
+    const float renderScaleY = static_cast<float>(outputHeight) / static_cast<float>(kHeight);
+    SDL_RenderSetScale(renderer, renderScaleX, renderScaleY);
     SDL_Texture* skinTexture = nullptr;
     SDL_Surface* skinSurface = SDL_LoadBMP_RW(
         SDL_RWFromFile("ui/industrial_console.bmp", "rb"), 1);
@@ -454,6 +494,10 @@ int main(int argc, char** argv) {
         else
             model.setStatusMessage("ROM directory is not available. Choose a ROM folder.");
     }
+    model.navigateTo(FrontendScreen::GameLibrary);
+    model.setStatusMessage(model.games().empty()
+        ? "ROM folder ready. Add games with ROM FOLDER or LOAD ROM."
+        : std::to_string(model.games().size()) + " game(s) ready. Tap a cover to play.");
 
     std::vector<SDL_Texture*> coverTextures;
     auto rebuildCoverTextures = [&]() {
@@ -730,11 +774,13 @@ int main(int argc, char** argv) {
     std::string inputDiagnostic = "INPUT: WAITING FOR TOUCH";
 
     auto handleWindowTap = [&](int windowX, int windowY, const char* source) {
-        float logicalX = 0.0f;
-        float logicalY = 0.0f;
-        SDL_RenderWindowToLogical(renderer, windowX, windowY, &logicalX, &logicalY);
-        const int x = static_cast<int>(logicalX);
-        const int y = static_cast<int>(logicalY);
+        int windowWidth = 0;
+        int windowHeight = 0;
+        SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+        const int x = windowWidth > 0
+            ? static_cast<int>(static_cast<float>(windowX) * kWidth / windowWidth) : windowX;
+        const int y = windowHeight > 0
+            ? static_cast<int>(static_cast<float>(windowY) * kHeight / windowHeight) : windowY;
         inputDiagnostic = std::string(source) + " X " +
             std::to_string(x) + " Y " + std::to_string(y);
         handlePointerTap(x, y);
