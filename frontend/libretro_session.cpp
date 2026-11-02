@@ -118,6 +118,16 @@ bool LibretroSession::loadRom(const std::string& corePath, const std::string& ro
         return false;
     }
     gameLoaded = true;
+    // Restore the cartridge battery RAM sidecar when one exists.
+    constexpr unsigned kSaveRam = 0;
+    const auto saveSize = api.getMemorySize(kSaveRam);
+    auto* saveData = static_cast<char*>(api.getMemoryData(kSaveRam));
+    if (saveData && saveSize > 0) {
+        std::ifstream saveFile(romPath + ".srm", std::ios::binary);
+        if (saveFile) {
+            saveFile.read(saveData, static_cast<std::streamsize>(saveSize));
+        }
+    }
     AvInfo av{};
     api.getAvInfo(&av);
     frameWidth = std::max(1u, av.geometry.baseWidth);
