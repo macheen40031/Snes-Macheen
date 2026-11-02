@@ -167,13 +167,14 @@ std::size_t activeMenuIndex(FrontendScreen screen) {
 
 void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
               const std::array<SDL_GameController*, 2>& controllers,
-              const EmulatorSession& emulator, SDL_Texture* gameTexture) {
+              const EmulatorSession& emulator, SDL_Texture* gameTexture,
+              const std::string& inputDiagnostic) {
     color(renderer, kBackground);
     SDL_RenderClear(renderer);
     drawPanel(renderer, SDL_Rect{12, 10, kWidth - 24, 90});
     drawText(renderer, 38, 30, "SNES-MACHEEN", 4, kText);
     drawText(renderer, 42, 72, "SUPER NINTENDO EMULATOR", 1, kBlue);
-    drawText(renderer, 760, 44, "V2 FRONTEND PREVIEW", 1, kMuted);
+    drawText(renderer, 760, 44, "V1.21 ANDROID BUILD", 1, kGreen);
 
     drawPanel(renderer, SDL_Rect{12, 112, 310, 492});
     drawText(renderer, 34, 132, "MAIN MENU", 2, kRed);
@@ -260,6 +261,7 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
     color(renderer, kPanelLight);
     SDL_RenderDrawLine(renderer, 24, 610, 976, 610);
     drawText(renderer, 28, 612, "TOUCH MENU ITEMS OR USE ARROWS / ENTER / ESC", 1, kMuted);
+    drawText(renderer, 350, 584, inputDiagnostic, 1, kGreen);
     SDL_RenderPresent(renderer);
 }
 
@@ -456,6 +458,19 @@ int main(int argc, char** argv) {
         }
     };
 
+    std::string inputDiagnostic = "INPUT: WAITING FOR TOUCH";
+
+    auto handleWindowTap = [&](int windowX, int windowY, const char* source) {
+        float logicalX = 0.0f;
+        float logicalY = 0.0f;
+        SDL_RenderWindowToLogical(renderer, windowX, windowY, &logicalX, &logicalY);
+        const int x = static_cast<int>(logicalX);
+        const int y = static_cast<int>(logicalY);
+        inputDiagnostic = std::string(source) + " X " +
+            std::to_string(x) + " Y " + std::to_string(y);
+        handlePointerTap(x, y);
+    };
+
     std::array<ControllerSlot, 2> slots{};
     std::array<int16_t, 2> controllerXAxis{};
     std::array<int16_t, 2> controllerYAxis{};
@@ -488,22 +503,18 @@ int main(int argc, char** argv) {
         while (SDL_PollEvent(&event)) {
             if (event.type == SDL_QUIT) running = false;
             else if (event.type == SDL_MOUSEBUTTONDOWN && event.button.button == SDL_BUTTON_LEFT) {
-                handlePointerTap(event.button.x, event.button.y);
+                handleWindowTap(event.button.x, event.button.y, "MOUSE");
             } else if (event.type == SDL_FINGERDOWN) {
-                int windowWidth = kWidth;
-                int windowHeight = kHeight;
+                int windowWidth = 0;
+                int windowHeight = 0;
                 SDL_GetWindowSize(window, &windowWidth, &windowHeight);
-                const float scale = std::min(
-                    static_cast<float>(windowWidth) / static_cast<float>(kWidth),
-                    static_cast<float>(windowHeight) / static_cast<float>(kHeight));
-                const float offsetX = (static_cast<float>(windowWidth) - kWidth * scale) * 0.5f;
-                const float offsetY = (static_cast<float>(windowHeight) - kHeight * scale) * 0.5f;
-                const float pixelX = event.tfinger.x * static_cast<float>(windowWidth);
-                const float pixelY = event.tfinger.y * static_cast<float>(windowHeight);
-                const int logicalX = static_cast<int>((pixelX - offsetX) / scale);
-                const int logicalY = static_cast<int>((pixelY - offsetY) / scale);
-                if (logicalX >= 0 && logicalX < kWidth && logicalY >= 0 && logicalY < kHeight)
-                    handlePointerTap(logicalX, logicalY);
+                if (windowWidth > 0 && windowHeight > 0) {
+                    const int windowX = static_cast<int>(
+                        event.tfinger.x * static_cast<float>(windowWidth));
+                    const int windowY = static_cast<int>(
+                        event.tfinger.y * static_cast<float>(windowHeight));
+                    handleWindowTap(windowX, windowY, "FINGER");
+                }
             }
             else if (event.type == SDL_DROPFILE) {
                 const std::string droppedValue = event.drop.file != nullptr ? event.drop.file : "";
@@ -602,7 +613,8 @@ int main(int argc, char** argv) {
                     static_cast<int>(PPU::SCREEN_WIDTH * sizeof(uint32_t)));
             }
         }
-        renderUi(renderer, model, {slots[0].handle, slots[1].handle}, emulator, gameTexture);
+        renderUi(renderer, model, {slots[0].handle, slots[1].handle},
+                 emulator, gameTexture, inputDiagnostic);
         SDL_Delay(framePacer.delayMilliseconds());
     }
 

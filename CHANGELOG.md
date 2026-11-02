@@ -1,3 +1,10 @@
+## v1.21 - Android interface and touch diagnostics
+
+- Added a visible v1.21 build identifier to the SDL interface.
+- Converted mouse and finger input through SDL_RenderWindowToLogical.
+- Added an on-screen input diagnostic showing the last input source and logical coordinates.
+- Increased Android versionCode to 31 for an in-place upgrade.
+
 # Changelog
 
 ## v1.20 — Industrial UI and touch navigation
