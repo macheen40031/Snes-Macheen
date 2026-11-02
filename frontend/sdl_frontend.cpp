@@ -198,7 +198,7 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
     drawPanel(renderer, SDL_Rect{12, 10, kWidth - 24, 90});
     drawText(renderer, 38, 30, "SNES-MACHEEN", 4, kText);
     drawText(renderer, 42, 72, "SUPER NINTENDO EMULATOR", 1, kBlue);
-    drawText(renderer, 760, 44, "V1.27 ANDROID BUILD", 1, kGreen);
+    drawText(renderer, 760, 44, "V1.28 ANDROID BUILD", 1, kGreen);
 
     drawPanel(renderer, SDL_Rect{12, 112, 310, 492});
     drawText(renderer, 34, 132, "MAIN MENU", 2, kRed);
@@ -468,12 +468,23 @@ int main(int argc, char** argv) {
         if (usingSnes9x) {
             model.enterPlaying(selected->title);
             model.setStatusMessage("Snes9x core loaded.");
-        } else if (emulator.loadRom(activeRomPath)) {
+        }
+#ifdef __ANDROID__
+        else {
+            // The in-development C++ CPU/PPU is not a compatibility backend.
+            // Never send retail cartridges into it when the real core fails:
+            // that produced misleading opcode faults and black gameplay screens.
+            emulator.unload();
+            model.setStatusMessage("Snes9x could not start: " + snes9x.status());
+        }
+#else
+        else if (emulator.loadRom(activeRomPath)) {
             model.enterPlaying(selected->title);
-            model.setStatusMessage("Snes9x unavailable; prototype fallback is active.");
+            model.setStatusMessage("Prototype fallback active (incomplete compatibility).");
         } else {
             model.setStatusMessage(snes9x.status() + " / " + emulator.status());
         }
+#endif
     };
     auto goBack = [&]() {
         if (model.screen() == FrontendScreen::Playing) {
