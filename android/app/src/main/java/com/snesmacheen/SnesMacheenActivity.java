@@ -7,6 +7,10 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.os.Build;
+import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.provider.OpenableColumns;
 import android.provider.DocumentsContract;
 
@@ -31,6 +35,44 @@ public final class SnesMacheenActivity extends SDLActivity {
     protected void onCreate(Bundle savedInstanceState) {
         instance = this;
         super.onCreate(savedInstanceState);
+        applyImmersiveMode();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        applyImmersiveMode();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) applyImmersiveMode();
+    }
+
+    /**
+     * Keep the emulator edge-to-edge while it is open. On Android 11+ use
+     * WindowInsetsController; older releases use the sticky immersive flags.
+     * A swipe from an edge can still temporarily reveal system controls.
+     */
+    private void applyImmersiveMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                controller.setSystemBarsBehavior(
+                    WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                controller.hide(WindowInsets.Type.statusBars() |
+                    WindowInsets.Type.navigationBars());
+            }
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_FULLSCREEN);
+        }
     }
 
     @Override
