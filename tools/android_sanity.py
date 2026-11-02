@@ -59,9 +59,9 @@ require("src/main/cpp/CMakeLists.txt" in app_gradle,
 native_cmake = (ROOT / "android/app/src/main/cpp/CMakeLists.txt").read_text(encoding="utf-8")
 require('add_library(main SHARED' in native_cmake,
         "Android native entrypoint is built as libmain.so")
-require('SDL_android_main.c' in native_cmake and 'target_link_libraries(main PRIVATE SDL2 SDL2main android log)' in native_cmake,
+require('SDL_android_main.c' in native_cmake and 'target_link_libraries(main PRIVATE SDL2 SDL2main android log dl)' in native_cmake,
         "Native target includes SDL2 Android glue and platform libraries")
-for source in ("cpu/cpu.cpp", "memory/bus.cpp", "cartridge/cartridge.cpp", "ppu/ppu.cpp", "frontend/emulator_session.cpp", "frontend/sdl_frontend.cpp"):
+for source in ("cpu/cpu.cpp", "memory/bus.cpp", "cartridge/cartridge.cpp", "ppu/ppu.cpp", "frontend/emulator_session.cpp", "frontend/libretro_session.cpp", "frontend/sdl_frontend.cpp"):
     require(source in native_cmake, f"Android native target includes {source}")
 
 java_bridge = (ROOT / "android/app/src/main/java/com/snesmacheen/SnesMacheenActivity.java").read_text(encoding="utf-8")
