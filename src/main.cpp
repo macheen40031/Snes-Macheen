@@ -1029,12 +1029,12 @@ int main() {
         FrontendModel ui;
         check(ui.screen() == FrontendScreen::MainMenu,
               "Frontend starts on the main menu");
-        check(ui.mainMenuItems().size() == 7,
-              "Main menu exposes seven planned sections");
+        check(ui.mainMenuItems().size() == 8,
+              "Main menu exposes eight planned sections");
         check(ui.selectedIndex() == 0,
               "Main menu initially selects Game Library");
         ui.handle(FrontendAction::Up);
-        check(ui.selectedIndex() == 6,
+        check(ui.selectedIndex() == 7,
               "Main menu selection wraps upward");
         ui.handle(FrontendAction::Down);
         check(ui.selectedIndex() == 0,

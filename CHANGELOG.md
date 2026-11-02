@@ -1,3 +1,46 @@
+## v1.27 — Settings and interface completion
+
+- Adds an audio-volume setting (0–100%, 5% per step) applied to Snes9x stereo samples before SDL audio queuing.
+- Adds a controller-stick deadzone setting (1000–20000, 500 per step).
+- Adds a Reset Defaults control and immediate status feedback.
+- Supports settings navigation and adjustment from touch, keyboard, and controller D-pad.
+- Rebalances menu-item spacing so all eight sections fit in the metallic console panel.
+- CI and physical-device audio/controller verification are pending.
+
+## v1.26 — Snes9x cheat engine bridge
+
+- Binds Libretro's cheat reset and cheat set APIs.
+- Supports up to 32 cheat codes per ROM and persists them in a .cht sidecar next to the ROM.
+- Adds the Cheats screen, Android/SDL text entry, add action, clear-all action, and active-code count.
+- Limits each entry to 128 printable characters; actual code parsing/compatibility is delegated to Snes9x.
+- CI and on-device game-specific cheat tests are pending.
+
+## v1.25 — Two-slot save-state manager
+
+- Binds the Libretro serialize-size, serialize, and unserialize functions.
+- Adds two save-state slots stored beside the selected ROM.
+- Writes state data to a temporary file before replacing a slot and validates state size before restoration.
+- Adds save/load controls to the industrial UI with touchscreen, keyboard, and controller navigation.
+- CI and on-device save/restore verification are pending.
+
+## v1.24 — Snes9x audio and Android core loading
+
+- Routes Libretro stereo signed-16 audio callbacks into SDL's queued audio device.
+- Caps the audio queue at approximately 250 ms to avoid runaway latency.
+- Keeps audio initialization optional so an unavailable device does not prevent emulator startup.
+- Resolves the core from Android ApplicationInfo.nativeLibraryDir rather than relying on a bare dlopen search name.
+- Explicitly selects joypad devices on both Libretro ports.
+- Added strict syntax checking for the Libretro adapter and static checks for the audio/native-library path.
+
+## v1.23 — Snes9x backend bring-up
+
+- Added a Libretro adapter that loads the Snes9x core, delivers rendered frames, and forwards two-player joypad input.
+- Android CI fetches the Snes9x core for ARM64 and ARMv7 and checks that both native libraries are packaged in the APK.
+- Fixed the runtime library name to match the downloaded artifact exactly.
+- Added precise unsupported-opcode and 24-bit program address diagnostics when the prototype CPU fallback faults.
+- Updated project, Android package, and release metadata to v1.23 (Android versionCode 33).
+- CI and physical-device verification remain pending for this release candidate.
+
 ## v1.21 - Android interface and touch diagnostics
 
 - Added a visible v1.21 build identifier to the SDL interface.

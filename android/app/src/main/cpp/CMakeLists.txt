@@ -23,6 +23,7 @@ add_library(main SHARED
     "${SNES_ROOT}/input/joypad.cpp"
     "${SNES_ROOT}/timing/frame_pacer.cpp"
     "${SNES_ROOT}/frontend/emulator_session.cpp"
+    "${SNES_ROOT}/frontend/libretro_session.cpp"
     "${SNES_ROOT}/cpu/cpu.cpp"
     "${SNES_ROOT}/memory/bus.cpp"
     "${SNES_ROOT}/cartridge/cartridge.cpp"
@@ -32,4 +33,4 @@ add_library(main SHARED
 
 target_include_directories(main PRIVATE "${SNES_ROOT}/include")
 target_compile_options(main PRIVATE -Wall -Wextra -Wpedantic)
-target_link_libraries(main PRIVATE SDL2 SDL2main android log)
+target_link_libraries(main PRIVATE SDL2 SDL2main android log dl)

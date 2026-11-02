@@ -49,8 +49,8 @@ require("gradle-8.13-bin.zip" in wrapper,
         "Gradle wrapper distribution matches the Android plugin requirement")
 require("compileSdk 36" in app_gradle and "minSdk 23" in app_gradle,
         "Android SDK levels are declared")
-require("versionName '1.22'" in app_gradle and "versionCode 32" in app_gradle,
-        "Android package version matches Snes-Macheen v1.22")
+require("versionName '1.27'" in app_gradle and "versionCode 37" in app_gradle,
+        "Android package version matches Snes-Macheen v1.27")
 require("arm64-v8a" in app_gradle and "armeabi-v7a" in app_gradle,
         "64-bit and 32-bit ARM ABIs are declared")
 require("src/main/cpp/CMakeLists.txt" in app_gradle,
@@ -59,9 +59,9 @@ require("src/main/cpp/CMakeLists.txt" in app_gradle,
 native_cmake = (ROOT / "android/app/src/main/cpp/CMakeLists.txt").read_text(encoding="utf-8")
 require('add_library(main SHARED' in native_cmake,
         "Android native entrypoint is built as libmain.so")
-require('SDL_android_main.c' in native_cmake and 'target_link_libraries(main PRIVATE SDL2 SDL2main android log)' in native_cmake,
+require('SDL_android_main.c' in native_cmake and 'target_link_libraries(main PRIVATE SDL2 SDL2main android log dl)' in native_cmake,
         "Native target includes SDL2 Android glue and platform libraries")
-for source in ("cpu/cpu.cpp", "memory/bus.cpp", "cartridge/cartridge.cpp", "ppu/ppu.cpp", "frontend/emulator_session.cpp", "frontend/sdl_frontend.cpp"):
+for source in ("cpu/cpu.cpp", "memory/bus.cpp", "cartridge/cartridge.cpp", "ppu/ppu.cpp", "frontend/emulator_session.cpp", "frontend/libretro_session.cpp", "frontend/sdl_frontend.cpp"):
     require(source in native_cmake, f"Android native target includes {source}")
 
 java_bridge = (ROOT / "android/app/src/main/java/com/snesmacheen/SnesMacheenActivity.java").read_text(encoding="utf-8")
@@ -105,6 +105,55 @@ require("SDL_MOUSEBUTTONDOWN" in sdl_frontend and "handlePointerTap" in sdl_fron
         "SDL frontend accepts touch-generated and mouse pointer taps")
 require("SDL_AndroidGetInternalStoragePath" in sdl_frontend and "create_directories(romDirectory" in sdl_frontend,
         "Android startup prepares a private ROM directory")
+
+libretro_frontend = (ROOT / "frontend/sdl_frontend.cpp").read_text(encoding="utf-8")
+require('snes9x.loadRom("snes9x_libretro_android.so"' in libretro_frontend,
+        "Frontend loads the exact Snes9x core filename packaged by Android CI")
+workflow = (ROOT / ".github/workflows/android-apk.yml").read_text(encoding="utf-8")
+require("snes9x_libretro_android.so.zip" in workflow and
+        "snes9x_libretro_android.so" in workflow,
+        "Android workflow fetches and verifies the Snes9x core for both ABIs")
+
+libretro_source = (ROOT / "frontend/libretro_session.cpp").read_text(encoding="utf-8")
+require("SDL_OpenAudioDevice" in libretro_source and "SDL_QueueAudio" in libretro_source,
+        "Snes9x Libretro audio callback is connected to SDL queued stereo output")
+require("SDL_GetQueuedAudioSize" in libretro_source and "maxQueuedBytes" in libretro_source,
+        "Snes9x audio buffering is bounded to prevent runaway latency")
+require("androidNativeLibraryPath" in libretro_source and "nativeLibraryDir" in libretro_source,
+        "Android Snes9x core is resolved from the app native-library directory")
+require("setControllerPortDevice(0, kDeviceJoypad)" in libretro_source and
+        "setControllerPortDevice(1, kDeviceJoypad)" in libretro_source,
+        "Libretro core ports are explicitly configured as joypads")
+
+require("retro_serialize_size" in libretro_source and "retro_serialize" in libretro_source and
+        "retro_unserialize" in libretro_source,
+        "Snes9x core serialization functions are bound for save states")
+sdl_frontend = (ROOT / "frontend/sdl_frontend.cpp").read_text(encoding="utf-8")
+require("SAVE SLOT 1" in sdl_frontend and "LOAD SLOT 1" in sdl_frontend and
+        "SAVE SLOT 2" in sdl_frontend and "LOAD SLOT 2" in sdl_frontend,
+        "SDL saves screen exposes two save-state slots")
+require("performSaveAction" in sdl_frontend and "GamepadControl::DpadUp" in sdl_frontend,
+        "Save-state actions are reachable from keyboard, touch and controller navigation")
+
+require("retro_cheat_set" in libretro_source and "retro_cheat_reset" in libretro_source,
+        "Libretro cheat set/reset API is bound to the Snes9x core")
+require('romPath + ".cht"' in libretro_source and "currentCheats.size() < 32u" in libretro_source,
+        "Cheat codes are restored from a per-ROM sidecar with a bounded slot count")
+require("SDL_TEXTINPUT" in sdl_frontend and "SDL_StartTextInput" in sdl_frontend,
+        "Cheat entry accepts text input from the SDL keyboard/Android soft keyboard")
+require('"CHEAT ENGINE"' in sdl_frontend and '"ADD CHEAT"' in sdl_frontend and
+        '"CLEAR ALL"' in sdl_frontend,
+        "Industrial UI exposes cheat entry and clear-all controls")
+
+require("setAudioVolumePercent" in libretro_source and "volumePercent" in libretro_source,
+        "Snes9x audio volume adjustment is available at runtime")
+require("audioVolumePercent + direction * 5" in sdl_frontend and
+        "SDL_QueueAudio" in libretro_source,
+        "Settings expose an audio volume adjustment connected to the core audio queue")
+require("mapper.setDeadzone" in sdl_frontend and "controllerDeadzone + direction * 500" in sdl_frontend,
+        "Settings expose a bounded controller-stick deadzone adjustment")
+require('"RESET DEFAULTS"' in sdl_frontend and "settingsSelection" in sdl_frontend,
+        "Settings include a selectable reset-to-defaults action")
 
 if errors:
     print(f"ANDROID SCAFFOLD SANITY: FAILED ({len(errors)} failures / {checks} checks)")

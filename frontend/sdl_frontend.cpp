@@ -6,6 +6,7 @@
 #include "controller_mapper.hpp"
 #include "frontend_model.hpp"
 #include "emulator_session.hpp"
+#include "libretro_session.hpp"
 #include "frame_pacer.hpp"
 
 #include <algorithm>
@@ -116,35 +117,49 @@ void drawBolt(SDL_Renderer* renderer, int x, int y) {
 }
 
 void drawPanel(SDL_Renderer* renderer, SDL_Rect rect) {
-    fill(renderer, rect, kSteel);
-    // Fine horizontal machining marks give the panel a brushed-steel finish.
-    for (int y = rect.y + 5; y < rect.y + rect.h - 5; y += 7) {
-        color(renderer, (y / 7) % 2 == 0 ? SDL_Color{57, 67, 77, 255}
-                                             : SDL_Color{43, 51, 60, 255});
-        SDL_RenderDrawLine(renderer, rect.x + 5, y, rect.x + rect.w - 6, y);
+    // Keep the chassis translucent: the console artwork remains visible beneath
+    // the controls instead of being buried under three opaque rectangles.
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    fill(renderer, rect, SDL_Color{13, 20, 27, 154});
+    for (int y = rect.y + 6; y < rect.y + rect.h - 6; y += 8) {
+        color(renderer, (y / 8) % 2 == 0 ? SDL_Color{176, 190, 201, 20}
+                                             : SDL_Color{0, 0, 0, 24});
+        SDL_RenderDrawLine(renderer, rect.x + 7, y, rect.x + rect.w - 8, y);
     }
-    outline(renderer, rect, kSteelHighlight, 3);
-    SDL_Rect bevel{rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 8};
-    outline(renderer, bevel, kPanelDark, 2);
-    SDL_Rect inner{rect.x + 8, rect.y + 8, rect.w - 16, rect.h - 16};
-    outline(renderer, inner, kPanelLight, 1);
-    fill(renderer, SDL_Rect{rect.x + 18, rect.y + 5, rect.w - 36, 3}, SDL_Color{125, 137, 147, 255});
+    // Double-cut steel edge, dark inset and machined highlight.
+    outline(renderer, rect, SDL_Color{151, 169, 183, 220}, 2);
+    SDL_Rect bevel{rect.x + 3, rect.y + 3, rect.w - 6, rect.h - 6};
+    outline(renderer, bevel, SDL_Color{5, 9, 13, 230}, 2);
+    SDL_Rect inner{rect.x + 7, rect.y + 7, rect.w - 14, rect.h - 14};
+    outline(renderer, inner, SDL_Color{104, 124, 139, 145}, 1);
+    fill(renderer, SDL_Rect{rect.x + 20, rect.y + 4, rect.w - 40, 2},
+         SDL_Color{194, 207, 216, 155});
     drawBolt(renderer, rect.x + 13, rect.y + 13);
     drawBolt(renderer, rect.x + rect.w - 13, rect.y + 13);
     drawBolt(renderer, rect.x + 13, rect.y + rect.h - 13);
     drawBolt(renderer, rect.x + rect.w - 13, rect.y + rect.h - 13);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 }
 
 void drawButton(SDL_Renderer* renderer, SDL_Rect rect, const std::string& label,
                 bool selected) {
-    fill(renderer, rect, selected ? SDL_Color{66, 25, 31, 255} : SDL_Color{19, 25, 31, 255});
-    outline(renderer, rect, selected ? kRed : kSteelHighlight, selected ? 3 : 1);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    fill(renderer, rect, selected ? SDL_Color{82, 25, 34, 218}
+                                  : SDL_Color{5, 12, 19, 166});
+    // A narrow top highlight and lower shadow create a raised steel switch.
+    fill(renderer, SDL_Rect{rect.x + 4, rect.y + 3, rect.w - 8, 2},
+         SDL_Color{177, 191, 202, static_cast<uint8_t>(selected ? 150 : 85)});
+    fill(renderer, SDL_Rect{rect.x + 4, rect.y + rect.h - 5, rect.w - 8, 2},
+         SDL_Color{0, 0, 0, 155});
+    outline(renderer, rect, selected ? kRed : kSteelHighlight, selected ? 2 : 1);
     outline(renderer, SDL_Rect{rect.x + 3, rect.y + 3, rect.w - 6, rect.h - 6},
             selected ? kRedDark : kPanelDark, 1);
     if (selected) {
         fill(renderer, SDL_Rect{rect.x + 7, rect.y + 7, 3, rect.h - 14}, kRed);
         fill(renderer, SDL_Rect{rect.x + rect.w - 10, rect.y + 7, 3, rect.h - 14}, kRed);
+        drawBolt(renderer, rect.x + rect.w - 16, rect.y + rect.h / 2);
     }
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
     drawText(renderer, rect.x + 18, rect.y + 12, label, 2, kText);
 }
 
@@ -160,15 +175,21 @@ std::size_t activeMenuIndex(FrontendScreen screen) {
     case FrontendScreen::Settings: return 2;
     case FrontendScreen::Controllers: return 3;
     case FrontendScreen::Saves: return 4;
-    case FrontendScreen::About: return 5;
+    case FrontendScreen::Cheats: return 5;
+    case FrontendScreen::About: return 6;
     default: return 0;
     }
 }
 
 void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
               const std::array<SDL_GameController*, 2>& controllers,
-              const EmulatorSession& emulator, SDL_Texture* gameTexture,
+              const EmulatorSession& emulator, const LibretroSession& snes9x,
+              bool usingSnes9x, SDL_Texture* gameTexture, SDL_Texture* coreTexture,
               const std::string& inputDiagnostic,
+              std::size_t saveActionSelection,
+              int audioVolumePercent, int controllerDeadzone,
+              std::size_t settingsSelection,
+              const std::string& cheatInput,
               SDL_Texture* skinTexture) {
     color(renderer, kBackground);
     SDL_RenderClear(renderer);
@@ -177,7 +198,7 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
     drawPanel(renderer, SDL_Rect{12, 10, kWidth - 24, 90});
     drawText(renderer, 38, 30, "SNES-MACHEEN", 4, kText);
     drawText(renderer, 42, 72, "SUPER NINTENDO EMULATOR", 1, kBlue);
-    drawText(renderer, 760, 44, "V1.21 ANDROID BUILD", 1, kGreen);
+    drawText(renderer, 760, 44, "V1.27 ANDROID BUILD", 1, kGreen);
 
     drawPanel(renderer, SDL_Rect{12, 112, 310, 492});
     drawText(renderer, 34, 132, "MAIN MENU", 2, kRed);
@@ -185,7 +206,7 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
     const std::size_t activeIndex = model.screen() == FrontendScreen::MainMenu
         ? model.selectedIndex() : activeMenuIndex(model.screen());
     for (std::size_t i = 0; i < items.size(); ++i) {
-        drawButton(renderer, SDL_Rect{30, 164 + static_cast<int>(i) * 52, 274, 43},
+        drawButton(renderer, SDL_Rect{30, 164 + static_cast<int>(i) * 46, 274, 43},
                    items[i], i == activeIndex);
     }
     if (model.screen() != FrontendScreen::MainMenu)
@@ -203,8 +224,10 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
             const std::size_t stop = std::min(games.size(), start + 9);
             for (std::size_t i = start; i < stop; ++i) {
                 const int y = 190 + static_cast<int>(i - start) * 42;
+                SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
                 fill(renderer, SDL_Rect{356, y, 610, 34},
-                     i == model.selectedIndex() ? SDL_Color{12, 60, 93, 255} : SDL_Color{17, 23, 30, 255});
+                     i == model.selectedIndex() ? SDL_Color{18, 93, 137, 205} : SDL_Color{8, 14, 20, 145});
+                SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
                 outline(renderer, SDL_Rect{356, y, 610, 34},
                         i == model.selectedIndex() ? kBlue : kPanelDark, 1);
                 drawText(renderer, 368, y + 10, games[i].title, 1, kText);
@@ -224,33 +247,67 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
         drawText(renderer, 360, 406, "SDL GAME CONTROLLER EVENTS", 1, kMuted);
         drawText(renderer, 360, 430, "DS4 PAIRING IS DONE IN ANDROID BLUETOOTH SETTINGS", 1, kMuted);
     } else if (model.screen() == FrontendScreen::Settings) {
-        drawText(renderer, 360, 136, "SETTINGS", 3, kRed);
-        drawText(renderer, 360, 214, "VIDEO / DISPLAY", 2, kText);
-        drawText(renderer, 360, 254, "AUDIO", 2, kText);
-        drawText(renderer, 360, 294, "EMULATION", 2, kText);
-        drawText(renderer, 360, 334, "CONTROLS", 2, kText);
-        drawText(renderer, 360, 406, "SETTING CONTROLS WILL BE CONNECTED IN A LATER BUILD", 1, kMuted);
+        drawText(renderer, 360, 136, "SYSTEM SETTINGS", 3, kRed);
+        drawText(renderer, 360, 178, "ADJUST WITH TOUCH, DPAD, OR ARROW KEYS", 1, kMuted);
+        drawButton(renderer, SDL_Rect{360, 206, 190, 46}, "VOLUME -", settingsSelection == 0);
+        drawText(renderer, 566, 222, std::to_string(audioVolumePercent) + "%", 2, kText);
+        drawButton(renderer, SDL_Rect{660, 206, 190, 46}, "VOLUME +", settingsSelection == 0);
+        drawButton(renderer, SDL_Rect{360, 270, 190, 46}, "DEADZONE -", settingsSelection == 1);
+        drawText(renderer, 566, 286, std::to_string(controllerDeadzone), 2, kText);
+        drawButton(renderer, SDL_Rect{660, 270, 190, 46}, "DEADZONE +", settingsSelection == 1);
+        drawButton(renderer, SDL_Rect{360, 334, 490, 46}, "RESET DEFAULTS", settingsSelection == 2);
+        drawText(renderer, 360, 412, "AUDIO VOLUME AFFECTS THE SNES9X OUTPUT", 1, kMuted);
+        drawText(renderer, 360, 444, "STICK DEADZONE: 1000 - 20000", 1, kMuted);
+        drawText(renderer, 360, 484, "CHANGES APPLY IMMEDIATELY", 1, kGreen);
     } else if (model.screen() == FrontendScreen::Saves) {
         drawText(renderer, 360, 136, "SAVES / STATES", 3, kRed);
-        drawText(renderer, 360, 220, "BATTERY SRAM IS SUPPORTED BY THE CORE", 1, kText);
-        drawText(renderer, 360, 254, "SAVE STATES ARE NOT IMPLEMENTED YET", 1, kMuted);
+        drawText(renderer, 360, 178, "SELECT A SAVE-STATE OPERATION", 1, kMuted);
+        drawButton(renderer, SDL_Rect{360, 206, 440, 46}, "SAVE SLOT 1", saveActionSelection == 0);
+        drawButton(renderer, SDL_Rect{360, 262, 440, 46}, "LOAD SLOT 1", saveActionSelection == 1);
+        drawButton(renderer, SDL_Rect{360, 318, 440, 46}, "SAVE SLOT 2", saveActionSelection == 2);
+        drawButton(renderer, SDL_Rect{360, 374, 440, 46}, "LOAD SLOT 2", saveActionSelection == 3);
+        drawText(renderer, 360, 446, "SLOT FILES ARE STORED BESIDE THE ROM", 1, kMuted);
+        drawText(renderer, 360, 478, usingSnes9x && snes9x.loaded()
+            ? snes9x.status() : "LOAD A GAME FIRST TO USE SAVE STATES", 1,
+            usingSnes9x && snes9x.loaded() ? kGreen : kMuted);
+    } else if (model.screen() == FrontendScreen::Cheats) {
+        drawText(renderer, 360, 136, "CHEAT ENGINE", 3, kRed);
+        drawText(renderer, 360, 178, "ENTER A SNES9X GAME GENIE / PAR CODE", 1, kMuted);
+        drawButton(renderer, SDL_Rect{360, 206, 540, 46}, "CODE INPUT", false);
+        drawText(renderer, 374, 222, cheatInput.empty() ? "TAP HERE TO ENTER CODE" : cheatInput,
+                 1, kText);
+        drawButton(renderer, SDL_Rect{360, 264, 250, 46}, "ADD CHEAT", false);
+        drawButton(renderer, SDL_Rect{624, 264, 276, 46}, "CLEAR ALL", false);
+        drawText(renderer, 360, 334, "ACTIVE CODES: " +
+                 std::to_string(snes9x.cheats().size()) + " / 32", 1, kGreen);
+        const auto& codes = snes9x.cheats();
+        for (std::size_t i = 0; i < std::min<std::size_t>(codes.size(), 4u); ++i) {
+            const std::string shown = codes[i].size() > 72u
+                ? codes[i].substr(0, 69u) + "..." : codes[i];
+            drawText(renderer, 360, 366 + static_cast<int>(i) * 28,
+                     std::to_string(i + 1u) + ". " + shown, 1, kText);
+        }
+        drawText(renderer, 360, 498, usingSnes9x && snes9x.loaded()
+            ? snes9x.status() : "LOAD A GAME FIRST TO USE CHEATS", 1,
+            usingSnes9x && snes9x.loaded() ? kMuted : kMuted);
     } else if (model.screen() == FrontendScreen::About) {
         drawText(renderer, 360, 136, "ABOUT SNES-MACHEEN", 3, kRed);
         drawText(renderer, 360, 220, "ORIGINAL C++ 65C816 / SNES EMULATOR PROJECT", 1, kText);
         drawText(renderer, 360, 254, "INDUSTRIAL METAL UI CONCEPT", 1, kMuted);
     } else if (model.screen() == FrontendScreen::Playing) {
         drawText(renderer, 360, 130, "NOW PLAYING", 2, kRed);
-        if (gameTexture != nullptr) {
+        if ((usingSnes9x && coreTexture != nullptr) || (!usingSnes9x && gameTexture != nullptr)) {
             const SDL_Rect viewport{446, 164, 430, 376};
             fill(renderer, SDL_Rect{438, 156, 446, 392}, kPanelDark);
             outline(renderer, SDL_Rect{438, 156, 446, 392}, kPanelLight, 2);
-            SDL_RenderCopy(renderer, gameTexture, nullptr, &viewport);
+            SDL_RenderCopy(renderer, usingSnes9x ? coreTexture : gameTexture, nullptr, &viewport);
         } else {
             drawText(renderer, 360, 220, "VIDEO TEXTURE UNAVAILABLE", 2, kMuted);
         }
         drawText(renderer, 360, 558, "ESC / CONTROLLER B: RETURN TO LIBRARY", 1, kMuted);
-        drawText(renderer, 360, 578, emulator.status(), 1,
-                 emulator.state() == EmulatorSession::State::Faulted ? SDL_Color{255, 150, 110, 255} : kMuted);
+        const std::string gameStatus = usingSnes9x ? snes9x.status() : emulator.status();
+        drawText(renderer, 360, 578, gameStatus, 1,
+                 !usingSnes9x && emulator.state() == EmulatorSession::State::Faulted ? SDL_Color{255, 150, 110, 255} : kMuted);
     } else {
         drawText(renderer, 360, 136, "SYSTEM READY", 3, kRed);
         drawText(renderer, 360, 220, "SELECT GAME LIBRARY TO BROWSE ROM FILES", 1, kText);
@@ -319,6 +376,8 @@ int main(int argc, char** argv) {
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0)
         return 2;
 
+    // Audio is optional: a missing Android audio device must not prevent the UI/game from launching.
+    SDL_InitSubSystem(SDL_INIT_AUDIO);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     SDL_Window* window = SDL_CreateWindow("Snes-Macheen", SDL_WINDOWPOS_CENTERED,
@@ -341,7 +400,13 @@ int main(int argc, char** argv) {
 
     FrontendModel model;
     ControllerMapper mapper;
+    int audioVolumePercent = 100;
+    int controllerDeadzone = ControllerMapper::DEFAULT_DEADZONE;
+    std::size_t settingsSelection = 0;
     EmulatorSession emulator;
+    LibretroSession snes9x;
+    bool usingSnes9x = false;
+    SDL_Texture* coreTexture = nullptr;
     SDL_Texture* gameTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
         SDL_TEXTUREACCESS_STREAMING, static_cast<int>(PPU::SCREEN_WIDTH),
         static_cast<int>(PPU::SCREEN_HEIGHT));
@@ -366,30 +431,114 @@ int main(int argc, char** argv) {
             model.setStatusMessage("ROM directory is not available. Choose a ROM folder.");
     }
 
+    std::string activeRomPath;
+    std::size_t saveActionSelection = 0;
+    std::string cheatInput;
+    bool cheatInputActive = false;
+    auto adjustSetting = [&](int direction) {
+        if (model.screen() != FrontendScreen::Settings || direction == 0) return;
+        if (settingsSelection == 0) {
+            audioVolumePercent = std::clamp(audioVolumePercent + direction * 5, 0, 100);
+            snes9x.setAudioVolumePercent(audioVolumePercent);
+            model.setStatusMessage("Audio volume set to " +
+                std::to_string(audioVolumePercent) + "%.");
+        } else if (settingsSelection == 1) {
+            controllerDeadzone = std::clamp(controllerDeadzone + direction * 500, 1000, 20000);
+            mapper.setDeadzone(static_cast<int16_t>(controllerDeadzone));
+            model.setStatusMessage("Controller deadzone set to " +
+                std::to_string(controllerDeadzone) + ".");
+        }
+    };
+    auto resetSettings = [&]() {
+        audioVolumePercent = 100;
+        controllerDeadzone = ControllerMapper::DEFAULT_DEADZONE;
+        snes9x.setAudioVolumePercent(audioVolumePercent);
+        mapper.setDeadzone(static_cast<int16_t>(controllerDeadzone));
+        settingsSelection = 0;
+        model.setStatusMessage("Settings restored to defaults.");
+    };
     auto launchSelectedGame = [&]() {
         const GameEntry* selected = model.selectedGame();
         if (selected == nullptr) {
             model.setStatusMessage("Select a ROM before launching.");
             return;
         }
-        if (emulator.loadRom(selected->path.string())) {
+        activeRomPath = selected->path.string();
+        usingSnes9x = snes9x.loadRom("snes9x_libretro_android.so", activeRomPath);
+        if (usingSnes9x) {
             model.enterPlaying(selected->title);
+            model.setStatusMessage("Snes9x core loaded.");
+        } else if (emulator.loadRom(activeRomPath)) {
+            model.enterPlaying(selected->title);
+            model.setStatusMessage("Snes9x unavailable; prototype fallback is active.");
         } else {
-            model.setStatusMessage(emulator.status());
+            model.setStatusMessage(snes9x.status() + " / " + emulator.status());
         }
     };
     auto goBack = [&]() {
         if (model.screen() == FrontendScreen::Playing) {
-            emulator.saveBatteryRam();
+            if (usingSnes9x && !activeRomPath.empty()) snes9x.saveRam(activeRomPath + ".srm");
+            else emulator.saveBatteryRam();
             emulator.unload();
+            snes9x.unload();
+            usingSnes9x = false;
+            if (coreTexture != nullptr) { SDL_DestroyTexture(coreTexture); coreTexture = nullptr; }
             model.returnToLibrary();
             model.setStatusMessage("Returned to game library.");
         } else {
+            if (model.screen() == FrontendScreen::Cheats && cheatInputActive) {
+                SDL_StopTextInput();
+                cheatInputActive = false;
+            }
             model.handle(FrontendAction::Back);
         }
     };
+    auto submitCheat = [&]() {
+        if (!usingSnes9x || !snes9x.loaded()) {
+            model.setStatusMessage("Load a game first. Cheats require the Snes9x backend.");
+            return;
+        }
+        if (cheatInput.empty()) {
+            model.setStatusMessage("Enter a cheat code first.");
+            return;
+        }
+        const bool added = snes9x.addCheat(cheatInput);
+        model.setStatusMessage(snes9x.status());
+        if (added) cheatInput.clear();
+        SDL_StopTextInput();
+        cheatInputActive = false;
+    };
+    auto clearCheats = [&]() {
+        if (!usingSnes9x || !snes9x.loaded()) {
+            model.setStatusMessage("Load a game first. Cheats require the Snes9x backend.");
+            return;
+        }
+        snes9x.clearCheats();
+        model.setStatusMessage(snes9x.status());
+    };
+    auto performSaveAction = [&]() {
+        if (!usingSnes9x || !snes9x.loaded() || activeRomPath.empty()) {
+            model.setStatusMessage("Load a game first. Save states require the Snes9x backend.");
+            return;
+        }
+        const unsigned slot = (saveActionSelection < 2) ? 1u : 2u;
+        const bool save = (saveActionSelection % 2u) == 0u;
+        const std::string statePath = activeRomPath + ".state" +
+            std::to_string(slot) + ".s9x";
+        const bool success = save ? snes9x.saveState(statePath)
+                                  : snes9x.loadState(statePath);
+        model.setStatusMessage(snes9x.status());
+        if (!success) return;
+    };
     auto confirm = [&]() {
-        if (model.screen() == FrontendScreen::GameLibrary) {
+        if (model.screen() == FrontendScreen::Saves) {
+            performSaveAction();
+        } else if (model.screen() == FrontendScreen::Settings) {
+            if (settingsSelection == 2) resetSettings();
+            else model.setStatusMessage("Use minus and plus controls to adjust the selected setting.");
+        } else if (model.screen() == FrontendScreen::Cheats) {
+            submitCheat();
+        } else if (model.screen() == FrontendScreen::GameLibrary) {
             launchSelectedGame();
         } else if (model.screen() == FrontendScreen::MainMenu && model.selectedIndex() == 1) {
 #ifdef __ANDROID__
@@ -400,7 +549,7 @@ int main(int argc, char** argv) {
 #else
             model.setStatusMessage("ROM file picker is available in the Android build.");
 #endif
-        } else if (model.screen() == FrontendScreen::MainMenu && model.selectedIndex() == 6) {
+        } else if (model.screen() == FrontendScreen::MainMenu && model.selectedIndex() == 7) {
 #ifdef __ANDROID__
             if (!callAndroidPickerMethod("openRomFolderPicker"))
                 model.setStatusMessage("Android ROM folder picker could not be opened.");
@@ -419,6 +568,10 @@ int main(int argc, char** argv) {
 #endif
 
     auto openMenuItem = [&](std::size_t index) {
+        if (model.screen() == FrontendScreen::Cheats && cheatInputActive && index != 5) {
+            SDL_StopTextInput();
+            cheatInputActive = false;
+        }
         switch (index) {
         case 0: model.navigateTo(FrontendScreen::GameLibrary); model.setStatusMessage("Choose a game from your library."); break;
         case 1:
@@ -429,11 +582,12 @@ int main(int argc, char** argv) {
             model.setStatusMessage("ROM file picker is available in the Android build.");
 #endif
             break;
-        case 2: model.navigateTo(FrontendScreen::Settings); model.setStatusMessage("Settings panel selected."); break;
+        case 2: settingsSelection = 0; model.navigateTo(FrontendScreen::Settings); model.setStatusMessage("Settings panel selected."); break;
         case 3: model.navigateTo(FrontendScreen::Controllers); model.setStatusMessage("Controller setup selected."); break;
-        case 4: model.navigateTo(FrontendScreen::Saves); model.setStatusMessage("Save and state panel selected."); break;
-        case 5: model.navigateTo(FrontendScreen::About); model.setStatusMessage("About Snes-Macheen."); break;
-        case 6:
+        case 4: saveActionSelection = 0; model.navigateTo(FrontendScreen::Saves); model.setStatusMessage("Save-state manager selected."); break;
+        case 5: model.navigateTo(FrontendScreen::Cheats); model.setStatusMessage("Cheat manager selected."); break;
+        case 6: model.navigateTo(FrontendScreen::About); model.setStatusMessage("About Snes-Macheen."); break;
+        case 7:
 #ifdef __ANDROID__
             if (!callAndroidPickerMethod("openRomFolderPicker")) model.setStatusMessage("Android ROM folder picker could not be opened.");
             else model.setStatusMessage("Choose a folder containing your SNES ROM files.");
@@ -447,7 +601,7 @@ int main(int argc, char** argv) {
     auto handlePointerTap = [&](int x, int y) {
         if (x >= 30 && x <= 304) {
             for (std::size_t i = 0; i < model.mainMenuItems().size(); ++i) {
-                const int top = 164 + static_cast<int>(i) * 52;
+                const int top = 164 + static_cast<int>(i) * 46;
                 if (y >= top && y < top + 43) {
                     if (model.screen() == FrontendScreen::MainMenu) model.selectIndex(i);
                     openMenuItem(i);
@@ -459,6 +613,41 @@ int main(int argc, char** argv) {
                 model.setStatusMessage("Returned to main menu.");
                 return;
             }
+        }
+        if (model.screen() == FrontendScreen::Settings && x >= 356 && x <= 900) {
+            if (y >= 206 && y < 252) {
+                settingsSelection = 0;
+                if (x < 550) adjustSetting(-1);
+                else if (x >= 660) adjustSetting(1);
+            } else if (y >= 270 && y < 316) {
+                settingsSelection = 1;
+                if (x < 550) adjustSetting(-1);
+                else if (x >= 660) adjustSetting(1);
+            } else if (y >= 334 && y < 380 && x <= 850) {
+                settingsSelection = 2;
+                resetSettings();
+            }
+            return;
+        }
+        if (model.screen() == FrontendScreen::Cheats && x >= 356 && x <= 966) {
+            if (y >= 206 && y < 252) {
+                cheatInputActive = true;
+                SDL_StartTextInput();
+            } else if (y >= 264 && y < 310 && x <= 610) {
+                submitCheat();
+            } else if (y >= 264 && y < 310 && x > 610) {
+                clearCheats();
+            }
+            return;
+        }
+        if (model.screen() == FrontendScreen::Saves &&
+            x >= 356 && x <= 966 && y >= 206 && y < 420) {
+            const std::size_t action = static_cast<std::size_t>((y - 206) / 56);
+            if (action < 4) {
+                saveActionSelection = action;
+                performSaveAction();
+            }
+            return;
         }
         if (model.screen() == FrontendScreen::GameLibrary &&
             x >= 356 && x <= 966 && y >= 190 && y < 568 && !model.games().empty()) {
@@ -551,14 +740,50 @@ int main(int argc, char** argv) {
                     }
                 }
             }
+            else if (event.type == SDL_TEXTINPUT &&
+                     model.screen() == FrontendScreen::Cheats && cheatInputActive) {
+                for (const unsigned char ch : event.text.text) {
+                    if (ch == 0) break;
+                    if (ch >= 0x20u && ch <= 0x7Eu && cheatInput.size() < 128u)
+                        cheatInput.push_back(static_cast<char>(ch));
+                }
+            }
             else if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
                 switch (event.key.keysym.sym) {
-                case SDLK_UP: model.handle(FrontendAction::Up); break;
-                case SDLK_DOWN: model.handle(FrontendAction::Down); break;
-                case SDLK_LEFT: model.handle(FrontendAction::Left); break;
-                case SDLK_RIGHT: model.handle(FrontendAction::Right); break;
+                case SDLK_UP:
+                    if (model.screen() == FrontendScreen::Saves)
+                        saveActionSelection = saveActionSelection == 0 ? 3 : saveActionSelection - 1;
+                    else if (model.screen() == FrontendScreen::Settings)
+                        settingsSelection = settingsSelection == 0 ? 2 : settingsSelection - 1;
+                    else model.handle(FrontendAction::Up);
+                    break;
+                case SDLK_DOWN:
+                    if (model.screen() == FrontendScreen::Saves)
+                        saveActionSelection = (saveActionSelection + 1) % 4;
+                    else if (model.screen() == FrontendScreen::Settings)
+                        settingsSelection = (settingsSelection + 1) % 3;
+                    else model.handle(FrontendAction::Down);
+                    break;
+                case SDLK_BACKSPACE:
+                    if (model.screen() == FrontendScreen::Cheats && cheatInputActive && !cheatInput.empty()) cheatInput.pop_back();
+                    break;
+                case SDLK_LEFT:
+                    if (model.screen() == FrontendScreen::Settings && settingsSelection < 2)
+                        adjustSetting(-1);
+                    else model.handle(FrontendAction::Left);
+                    break;
+                case SDLK_RIGHT:
+                    if (model.screen() == FrontendScreen::Settings && settingsSelection < 2)
+                        adjustSetting(1);
+                    else model.handle(FrontendAction::Right);
+                    break;
                 case SDLK_RETURN: case SDLK_SPACE: confirm(); break;
-                case SDLK_ESCAPE: goBack(); break;
+                case SDLK_ESCAPE:
+                    if (model.screen() == FrontendScreen::Cheats && cheatInputActive) {
+                        SDL_StopTextInput();
+                        cheatInputActive = false;
+                    } else goBack();
+                    break;
                 default: break;
                 }
             } else if (event.type == SDL_CONTROLLERDEVICEADDED) {
@@ -585,10 +810,28 @@ int main(int argc, char** argv) {
                     if (mapControllerButton(static_cast<SDL_GameControllerButton>(event.cbutton.button), control)) {
                         const bool pressed = event.type == SDL_CONTROLLERBUTTONDOWN;
                         mapper.setButton(slot, control, pressed);
-                        if (pressed && control == GamepadControl::DpadUp) model.handle(FrontendAction::Up);
-                        else if (pressed && control == GamepadControl::DpadDown) model.handle(FrontendAction::Down);
-                        else if (pressed && control == GamepadControl::DpadLeft) model.handle(FrontendAction::Left);
-                        else if (pressed && control == GamepadControl::DpadRight) model.handle(FrontendAction::Right);
+                        if (pressed && control == GamepadControl::DpadUp) {
+                            if (model.screen() == FrontendScreen::Saves)
+                                saveActionSelection = saveActionSelection == 0 ? 3 : saveActionSelection - 1;
+                            else if (model.screen() == FrontendScreen::Settings)
+                                settingsSelection = settingsSelection == 0 ? 2 : settingsSelection - 1;
+                            else model.handle(FrontendAction::Up);
+                        }
+                        else if (pressed && control == GamepadControl::DpadDown) {
+                            if (model.screen() == FrontendScreen::Saves)
+                                saveActionSelection = (saveActionSelection + 1) % 4;
+                            else if (model.screen() == FrontendScreen::Settings)
+                                settingsSelection = (settingsSelection + 1) % 3;
+                            else model.handle(FrontendAction::Down);
+                        }
+                        else if (pressed && control == GamepadControl::DpadLeft) {
+                            if (model.screen() == FrontendScreen::Settings && settingsSelection < 2) adjustSetting(-1);
+                            else model.handle(FrontendAction::Left);
+                        }
+                        else if (pressed && control == GamepadControl::DpadRight) {
+                            if (model.screen() == FrontendScreen::Settings && settingsSelection < 2) adjustSetting(1);
+                            else model.handle(FrontendAction::Right);
+                        }
                         else if (pressed && control == GamepadControl::South) confirm();
                         else if (pressed && control == GamepadControl::East) goBack();
                     }
@@ -609,27 +852,46 @@ int main(int argc, char** argv) {
         // serial ports. This also clears inputs after controller disconnects.
         emulator.setControllerState(0, mapper.state(0));
         emulator.setControllerState(1, mapper.state(1));
+        snes9x.setControllerState(0, mapper.state(0));
+        snes9x.setControllerState(1, mapper.state(1));
 
-        if (model.screen() == FrontendScreen::Playing && emulator.loaded()) {
-            // Prototype execution budget only: host input reaches the SNES
-            // serial ports, but CPU/PPU emulation is not cycle-accurate yet.
-            if (emulator.state() != EmulatorSession::State::Halted &&
-                emulator.state() != EmulatorSession::State::Faulted) {
-                for (std::size_t frame = 0; frame < framesDue; ++frame)
-                    emulator.runFrame(2000);
-            }
-            if (gameTexture != nullptr) {
-                const auto& pixels = emulator.framebufferArgb8888();
-                SDL_UpdateTexture(gameTexture, nullptr, pixels.data(),
-                    static_cast<int>(PPU::SCREEN_WIDTH * sizeof(uint32_t)));
+        if (model.screen() == FrontendScreen::Playing) {
+            if (usingSnes9x && snes9x.loaded()) {
+                for (std::size_t frame = 0; frame < framesDue; ++frame) snes9x.runFrame();
+                const auto& pixels = snes9x.framebuffer();
+                if (!pixels.empty()) {
+                    if (coreTexture == nullptr) {
+                        if (coreTexture) SDL_DestroyTexture(coreTexture);
+                        coreTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
+                            SDL_TEXTUREACCESS_STREAMING, static_cast<int>(snes9x.width()),
+                            static_cast<int>(snes9x.height()));
+                    }
+                    if (coreTexture) SDL_UpdateTexture(coreTexture, nullptr, pixels.data(),
+                        static_cast<int>(snes9x.width() * sizeof(uint32_t)));
+                }
+            } else if (emulator.loaded()) {
+                if (emulator.state() != EmulatorSession::State::Halted &&
+                    emulator.state() != EmulatorSession::State::Faulted) {
+                    for (std::size_t frame = 0; frame < framesDue; ++frame) emulator.runFrame(2000);
+                }
+                if (gameTexture != nullptr) {
+                    const auto& pixels = emulator.framebufferArgb8888();
+                    SDL_UpdateTexture(gameTexture, nullptr, pixels.data(),
+                        static_cast<int>(PPU::SCREEN_WIDTH * sizeof(uint32_t)));
+                }
             }
         }
         renderUi(renderer, model, {slots[0].handle, slots[1].handle},
-                 emulator, gameTexture, inputDiagnostic, skinTexture);
+                 emulator, snes9x, usingSnes9x, gameTexture, coreTexture,
+                 inputDiagnostic, saveActionSelection, audioVolumePercent,
+                 controllerDeadzone, settingsSelection, cheatInput, skinTexture);
         SDL_Delay(framePacer.delayMilliseconds());
     }
 
-    emulator.saveBatteryRam();
+    if (usingSnes9x && !activeRomPath.empty()) snes9x.saveRam(activeRomPath + ".srm");
+    else emulator.saveBatteryRam();
+    snes9x.unload();
+    if (coreTexture != nullptr) SDL_DestroyTexture(coreTexture);
     for (auto& slot : slots) if (slot.handle != nullptr) SDL_GameControllerClose(slot.handle);
     if (skinTexture != nullptr) SDL_DestroyTexture(skinTexture);
     if (gameTexture != nullptr) SDL_DestroyTexture(gameTexture);

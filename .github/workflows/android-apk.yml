@@ -3,7 +3,7 @@ name: Snes-Macheen Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master ]
+    branches: [ main, master, feature/snes9x-backend ]
     paths:
       - 'android/**'
       - 'cpu/**'
@@ -62,6 +62,20 @@ jobs:
             "cmake;3.22.1"
       - name: Fetch pinned SDL2 Android source
         run: bash android/fetch_sdl2.sh
+      - name: Fetch Snes9x Libretro Android cores
+        run: |
+          set -euo pipefail
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a android/app/src/main/jniLibs/armeabi-v7a
+          curl --fail --location --retry 3 \
+            https://buildbot.libretro.com/nightly/android/latest/arm64-v8a/snes9x_libretro_android.so.zip \
+            -o "$RUNNER_TEMP/snes9x-arm64.zip"
+          curl --fail --location --retry 3 \
+            https://buildbot.libretro.com/nightly/android/latest/armeabi-v7a/snes9x_libretro_android.so.zip \
+            -o "$RUNNER_TEMP/snes9x-armv7.zip"
+          unzip -o "$RUNNER_TEMP/snes9x-arm64.zip" -d android/app/src/main/jniLibs/arm64-v8a
+          unzip -o "$RUNNER_TEMP/snes9x-armv7.zip" -d android/app/src/main/jniLibs/armeabi-v7a
+          test -s android/app/src/main/jniLibs/arm64-v8a/snes9x_libretro_android.so
+          test -s android/app/src/main/jniLibs/armeabi-v7a/snes9x_libretro_android.so
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleDebug
         working-directory: android
@@ -94,7 +108,9 @@ jobs:
           unzip -t "$APK"
           unzip -l "$APK" | grep -q 'lib/arm64-v8a/libmain.so'
           unzip -l "$APK" | grep -q 'lib/armeabi-v7a/libmain.so'
-          echo "APK verified: $APK"
+          unzip -l "$APK" | grep -q 'lib/arm64-v8a/snes9x_libretro_android.so'
+          unzip -l "$APK" | grep -q 'lib/armeabi-v7a/snes9x_libretro_android.so'
+          echo "APK and bundled Snes9x cores verified: $APK"
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:

@@ -22,6 +22,9 @@ python3 -S tools/android_sanity.py
 "${CXX:-c++}" -std=c++20 -Wall -Wextra -Wpedantic -Werror \
   -fsyntax-only -I tools/sdl2_compile_stub -I include frontend/sdl_frontend.cpp
 printf '[PASS] SDL2 frontend C++ syntax check (test API stub; no SDL link)\n'
+"${CXX:-c++}" -std=c++20 -Wall -Wextra -Wpedantic -Werror \
+  -fsyntax-only -I tools/sdl2_compile_stub -I include frontend/libretro_session.cpp
+printf '[PASS] Snes9x Libretro adapter C++ syntax check (test API stub; no core link)\n'
 
 rm -rf build-quality
 cmake -S . -B build-quality -G Ninja \
