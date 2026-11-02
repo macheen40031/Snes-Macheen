@@ -1,3 +1,12 @@
+## v1.23 — Snes9x backend bring-up
+
+- Added a Libretro adapter that loads the Snes9x core, delivers rendered frames, and forwards two-player joypad input.
+- Android CI fetches the Snes9x core for ARM64 and ARMv7 and checks that both native libraries are packaged in the APK.
+- Fixed the runtime library name to match the downloaded artifact exactly.
+- Added precise unsupported-opcode and 24-bit program address diagnostics when the prototype CPU fallback faults.
+- Updated project, Android package, and release metadata to v1.23 (Android versionCode 33).
+- CI and physical-device verification remain pending for this release candidate.
+
 ## v1.21 - Android interface and touch diagnostics
 
 - Added a visible v1.21 build identifier to the SDL interface.
