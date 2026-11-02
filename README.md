@@ -1,4 +1,4 @@
-# Snes-Macheen v1.25
+# Snes-Macheen v1.26
 
 Snes-Macheen is an Android/desktop SNES emulator frontend with an industrial console UI. Version 1.23 introduces the Libretro Snes9x backend for Android, while retaining the in-development C++ core as a diagnostic fallback.
 
@@ -9,6 +9,13 @@ Snes-Macheen is an Android/desktop SNES emulator frontend with an industrial con
 - Treats audio-device initialization as optional so devices without an available audio driver can still launch the emulator UI.
 - Resolves the bundled Snes9x core through Android's native-library directory.
 - Configures both Libretro controller ports as joypads.
+
+## v1.26 changes
+
+- Adds the Libretro cheat reset/set bridge to Snes9x.
+- Supports up to 32 per-ROM cheat codes, persisted in a .cht sidecar.
+- Adds an on-screen cheat manager with text entry, add, and clear-all actions.
+- Accepts printable codes up to 128 characters; the Snes9x core remains responsible for interpreting code syntax.
 
 ## v1.25 changes
 
