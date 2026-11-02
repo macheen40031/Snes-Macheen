@@ -1,8 +1,8 @@
 SNES-MACHEEN RELEASE MANIFEST
-Version: 1.29
+Version: 1.30
 Project: Snes-Macheen
 Package: Android APK built by GitHub Actions
-Previous milestone: 1.28
+Previous milestone: 1.29
 Snes9x Libretro backend: integrated; CI verification pending
 Snes9x stereo audio output: implemented; device test pending
 Runtime audio volume: 0-100%; source-level scaling before SDL queue
@@ -10,9 +10,9 @@ Two-slot save states: implemented; device test pending
 Cheat engine: integrated with Snes9x; up to 32 saved per-ROM codes
 Controller deadzone setting: 1000-20000; runtime adjustment
 Settings: reset defaults and touch/keyboard/gamepad navigation
-Android ABIs: arm64-v8a and armeabi-v7a; CI verification pending
-Host quality gate: passed for v1.28; v1.29 validation pending
-Android Gradle/APK build: passed for v1.28; v1.29 validation pending
+Android ABIs: arm64-v8a and armeabi-v7a; v1.29 CI verified
+Host quality gate: passed for v1.29; v1.30 validation pending
+Android Gradle/APK build: passed for v1.29; v1.30 validation pending
 On-device ROM/video/audio/controller/save-state/cheat verification: pending
-Android versionCode: 39
-Android versionName: 1.29
+Android versionCode: 40
+Android versionName: 1.30
