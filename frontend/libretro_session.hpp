@@ -31,6 +31,7 @@ private:
     unsigned frameHeight = 224;
     uint16_t pads[2]{};
     uint32_t audioDevice = 0;
+    int audioFrequency = 0;
 
     static LibretroSession* active;
     static bool environment(unsigned command, void* data);
