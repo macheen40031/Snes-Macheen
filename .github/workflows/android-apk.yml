@@ -108,7 +108,9 @@ jobs:
           unzip -t "$APK"
           unzip -l "$APK" | grep -q 'lib/arm64-v8a/libmain.so'
           unzip -l "$APK" | grep -q 'lib/armeabi-v7a/libmain.so'
-          echo "APK verified: $APK"
+          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libsnes9x_libretro_android.so'
+          unzip -l "$APK" | grep -q 'lib/armeabi-v7a/libsnes9x_libretro_android.so'
+          echo "APK and bundled Snes9x cores verified: $APK"
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
