@@ -250,8 +250,15 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
         drawText(renderer, 360, 406, "SETTING CONTROLS WILL BE CONNECTED IN A LATER BUILD", 1, kMuted);
     } else if (model.screen() == FrontendScreen::Saves) {
         drawText(renderer, 360, 136, "SAVES / STATES", 3, kRed);
-        drawText(renderer, 360, 220, "BATTERY SRAM IS SUPPORTED BY THE CORE", 1, kText);
-        drawText(renderer, 360, 254, "SAVE STATES ARE NOT IMPLEMENTED YET", 1, kMuted);
+        drawText(renderer, 360, 178, "SELECT A SAVE-STATE OPERATION", 1, kMuted);
+        drawButton(renderer, SDL_Rect{360, 206, 440, 46}, "SAVE SLOT 1", saveActionSelection == 0);
+        drawButton(renderer, SDL_Rect{360, 262, 440, 46}, "LOAD SLOT 1", saveActionSelection == 1);
+        drawButton(renderer, SDL_Rect{360, 318, 440, 46}, "SAVE SLOT 2", saveActionSelection == 2);
+        drawButton(renderer, SDL_Rect{360, 374, 440, 46}, "LOAD SLOT 2", saveActionSelection == 3);
+        drawText(renderer, 360, 446, "SLOT FILES ARE STORED BESIDE THE ROM", 1, kMuted);
+        drawText(renderer, 360, 478, usingSnes9x && snes9x.loaded()
+            ? snes9x.status() : "LOAD A GAME FIRST TO USE SAVE STATES", 1,
+            usingSnes9x && snes9x.loaded() ? kGreen : kMuted);
     } else if (model.screen() == FrontendScreen::About) {
         drawText(renderer, 360, 136, "ABOUT SNES-MACHEEN", 3, kRed);
         drawText(renderer, 360, 220, "ORIGINAL C++ 65C816 / SNES EMULATOR PROJECT", 1, kText);
@@ -391,6 +398,7 @@ int main(int argc, char** argv) {
     }
 
     std::string activeRomPath;
+    std::size_t saveActionSelection = 0;
     auto launchSelectedGame = [&]() {
         const GameEntry* selected = model.selectedGame();
         if (selected == nullptr) {
@@ -423,8 +431,24 @@ int main(int argc, char** argv) {
             model.handle(FrontendAction::Back);
         }
     };
+    auto performSaveAction = [&]() {
+        if (!usingSnes9x || !snes9x.loaded() || activeRomPath.empty()) {
+            model.setStatusMessage("Load a game first. Save states require the Snes9x backend.");
+            return;
+        }
+        const unsigned slot = (saveActionSelection < 2) ? 1u : 2u;
+        const bool save = (saveActionSelection % 2u) == 0u;
+        const std::string statePath = activeRomPath + ".state" +
+            std::to_string(slot) + ".s9x";
+        const bool success = save ? snes9x.saveState(statePath)
+                                  : snes9x.loadState(statePath);
+        model.setStatusMessage(snes9x.status());
+        if (!success) return;
+    };
     auto confirm = [&]() {
-        if (model.screen() == FrontendScreen::GameLibrary) {
+        if (model.screen() == FrontendScreen::Saves) {
+            performSaveAction();
+        } else if (model.screen() == FrontendScreen::GameLibrary) {
             launchSelectedGame();
         } else if (model.screen() == FrontendScreen::MainMenu && model.selectedIndex() == 1) {
 #ifdef __ANDROID__
@@ -466,7 +490,7 @@ int main(int argc, char** argv) {
             break;
         case 2: model.navigateTo(FrontendScreen::Settings); model.setStatusMessage("Settings panel selected."); break;
         case 3: model.navigateTo(FrontendScreen::Controllers); model.setStatusMessage("Controller setup selected."); break;
-        case 4: model.navigateTo(FrontendScreen::Saves); model.setStatusMessage("Save and state panel selected."); break;
+        case 4: saveActionSelection = 0; model.navigateTo(FrontendScreen::Saves); model.setStatusMessage("Save-state manager selected."); break;
         case 5: model.navigateTo(FrontendScreen::About); model.setStatusMessage("About Snes-Macheen."); break;
         case 6:
 #ifdef __ANDROID__
@@ -494,6 +518,15 @@ int main(int argc, char** argv) {
                 model.setStatusMessage("Returned to main menu.");
                 return;
             }
+        }
+        if (model.screen() == FrontendScreen::Saves &&
+            x >= 356 && x <= 966 && y >= 206 && y < 420) {
+            const std::size_t action = static_cast<std::size_t>((y - 206) / 56);
+            if (action < 4) {
+                saveActionSelection = action;
+                performSaveAction();
+            }
+            return;
         }
         if (model.screen() == FrontendScreen::GameLibrary &&
             x >= 356 && x <= 966 && y >= 190 && y < 568 && !model.games().empty()) {
@@ -588,8 +621,16 @@ int main(int argc, char** argv) {
             }
             else if (event.type == SDL_KEYDOWN && event.key.repeat == 0) {
                 switch (event.key.keysym.sym) {
-                case SDLK_UP: model.handle(FrontendAction::Up); break;
-                case SDLK_DOWN: model.handle(FrontendAction::Down); break;
+                case SDLK_UP:
+                    if (model.screen() == FrontendScreen::Saves)
+                        saveActionSelection = saveActionSelection == 0 ? 3 : saveActionSelection - 1;
+                    else model.handle(FrontendAction::Up);
+                    break;
+                case SDLK_DOWN:
+                    if (model.screen() == FrontendScreen::Saves)
+                        saveActionSelection = (saveActionSelection + 1) % 4;
+                    else model.handle(FrontendAction::Down);
+                    break;
                 case SDLK_LEFT: model.handle(FrontendAction::Left); break;
                 case SDLK_RIGHT: model.handle(FrontendAction::Right); break;
                 case SDLK_RETURN: case SDLK_SPACE: confirm(); break;
@@ -620,8 +661,16 @@ int main(int argc, char** argv) {
                     if (mapControllerButton(static_cast<SDL_GameControllerButton>(event.cbutton.button), control)) {
                         const bool pressed = event.type == SDL_CONTROLLERBUTTONDOWN;
                         mapper.setButton(slot, control, pressed);
-                        if (pressed && control == GamepadControl::DpadUp) model.handle(FrontendAction::Up);
-                        else if (pressed && control == GamepadControl::DpadDown) model.handle(FrontendAction::Down);
+                        if (pressed && control == GamepadControl::DpadUp) {
+                            if (model.screen() == FrontendScreen::Saves)
+                                saveActionSelection = saveActionSelection == 0 ? 3 : saveActionSelection - 1;
+                            else model.handle(FrontendAction::Up);
+                        }
+                        else if (pressed && control == GamepadControl::DpadDown) {
+                            if (model.screen() == FrontendScreen::Saves)
+                                saveActionSelection = (saveActionSelection + 1) % 4;
+                            else model.handle(FrontendAction::Down);
+                        }
                         else if (pressed && control == GamepadControl::DpadLeft) model.handle(FrontendAction::Left);
                         else if (pressed && control == GamepadControl::DpadRight) model.handle(FrontendAction::Right);
                         else if (pressed && control == GamepadControl::South) confirm();
