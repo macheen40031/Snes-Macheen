@@ -1,3 +1,11 @@
+## v1.25 — Two-slot save-state manager
+
+- Binds the Libretro serialize-size, serialize, and unserialize functions.
+- Adds two save-state slots stored beside the selected ROM.
+- Writes state data to a temporary file before replacing a slot and validates state size before restoration.
+- Adds save/load controls to the industrial UI with touchscreen, keyboard, and controller navigation.
+- CI and on-device save/restore verification are pending.
+
 ## v1.24 — Snes9x audio and Android core loading
 
 - Routes Libretro stereo signed-16 audio callbacks into SDL's queued audio device.
