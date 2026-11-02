@@ -49,8 +49,8 @@ require("gradle-8.13-bin.zip" in wrapper,
         "Gradle wrapper distribution matches the Android plugin requirement")
 require("compileSdk 36" in app_gradle and "minSdk 23" in app_gradle,
         "Android SDK levels are declared")
-require("versionName '1.30'" in app_gradle and "versionCode 40" in app_gradle,
-        "Android package version matches Snes-Macheen v1.30")
+require("versionName '1.31'" in app_gradle and "versionCode 41" in app_gradle,
+        "Android package version matches Snes-Macheen v1.31")
 require("arm64-v8a" in app_gradle and "armeabi-v7a" in app_gradle,
         "64-bit and 32-bit ARM ABIs are declared")
 require("src/main/cpp/CMakeLists.txt" in app_gradle,
@@ -91,6 +91,10 @@ require("SDL_CONTROLLERDEVICEADDED" in sdl_frontend and "SDL_CONTROLLERDEVICEREM
         "SDL frontend handles controller connection lifecycle")
 require("SDL_CONTROLLERAXISMOTION" in sdl_frontend and "SDL_CONTROLLERBUTTONDOWN" in sdl_frontend,
         "SDL frontend handles gamepad buttons and analog axes")
+require("SDL_IsGameController(deviceIndex)" in sdl_frontend and "SDL_GameControllerOpen(deviceIndex)" in sdl_frontend,
+        "SDL opens recognized Bluetooth/USB game controllers through the standardized gamepad API")
+require("SDL_NumJoysticks()" in sdl_frontend and "SDL_CONTROLLERDEVICEADDED" in sdl_frontend,
+        "SDL discovers controllers already paired and controllers connected while the emulator is running")
 require("emulator.setControllerState" in sdl_frontend,
         "SDL controller mapper publishes input to SNES serial ports")
 require("FramePacer" in sdl_frontend and "framesDue" in sdl_frontend,
@@ -107,6 +111,12 @@ require("SDL_MOUSEBUTTONDOWN" in sdl_frontend and "handlePointerTap" in sdl_fron
         "SDL frontend accepts touch-generated and mouse pointer taps")
 require("SDL_AndroidGetInternalStoragePath" in sdl_frontend and "create_directories(romDirectory" in sdl_frontend,
         "Android startup prepares a private ROM directory")
+require("WindowInsetsController" in java_bridge and "WindowInsets.Type.statusBars()" in java_bridge and "WindowInsets.Type.navigationBars()" in java_bridge,
+        "Android activity hides status and navigation bars using modern window insets")
+require("BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE" in java_bridge and "SYSTEM_UI_FLAG_IMMERSIVE_STICKY" in java_bridge,
+        "Immersive full-screen mode remains active after focus changes on modern and older Android")
+require("applyImmersiveMode();" in java_bridge and "onWindowFocusChanged" in java_bridge and "onResume()" in java_bridge,
+        "Android reapplies immersive mode on launch, resume, and window focus")
 
 libretro_frontend = (ROOT / "frontend/sdl_frontend.cpp").read_text(encoding="utf-8")
 require('snes9x.loadRom("snes9x_libretro_android.so"' in libretro_frontend,
