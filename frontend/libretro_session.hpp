@@ -20,6 +20,8 @@ public:
     unsigned width() const noexcept { return frameWidth; }
     unsigned height() const noexcept { return frameHeight; }
     bool saveRam(const std::string& path) const;
+    bool saveState(const std::string& path);
+    bool loadState(const std::string& path);
 
 private:
     void* library = nullptr;
