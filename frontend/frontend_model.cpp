@@ -7,7 +7,7 @@
 
 FrontendModel::FrontendModel()
     : menuItems{"Game Library", "Load ROM", "Settings", "Controllers",
-                "Saves / States", "About", "ROM FOLDER"} {}
+                "Saves / States", "Cheats", "About", "ROM FOLDER"} {}
 
 FrontendScreen FrontendModel::screen() const noexcept { return currentScreen; }
 std::size_t FrontendModel::selectedIndex() const noexcept { return currentSelection; }
@@ -80,6 +80,7 @@ void FrontendModel::handle(FrontendAction action) {
     case FrontendScreen::Settings:
     case FrontendScreen::Controllers:
     case FrontendScreen::Saves:
+    case FrontendScreen::Cheats:
     case FrontendScreen::About:
         if (action == FrontendAction::Back) {
             setScreen(FrontendScreen::MainMenu);
