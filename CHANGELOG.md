@@ -1,3 +1,9 @@
+## v1.30 — Android Snes9x library lookup fallback
+
+- Tries the absolute path in Android's nativeLibraryDir first, then retries the library soname through the app's linker namespace.
+- Captures every attempted path and the actual dynamic-linker error so missing files can be distinguished from missing dependencies or ABI issues.
+- Android version code 40. Physical-device launch testing remains required.
+
 ## v1.29 — ROM diagnostics and video-format hardening
 
 - Reports the exact missing Libretro symbol when the bundled Snes9x core cannot be bound, replacing an opaque generic loader error.
