@@ -148,7 +148,7 @@ void drawButton(SDL_Renderer* renderer, SDL_Rect rect, const std::string& label,
                                   : SDL_Color{5, 12, 19, 166});
     // A narrow top highlight and lower shadow create a raised steel switch.
     fill(renderer, SDL_Rect{rect.x + 4, rect.y + 3, rect.w - 8, 2},
-         SDL_Color{177, 191, 202, selected ? 150 : 85});
+         SDL_Color{177, 191, 202, static_cast<uint8_t>(selected ? 150 : 85)});
     fill(renderer, SDL_Rect{rect.x + 4, rect.y + rect.h - 5, rect.w - 8, 2},
          SDL_Color{0, 0, 0, 155});
     outline(renderer, rect, selected ? kRed : kSteelHighlight, selected ? 2 : 1);
