@@ -1,0 +1,12 @@
+build/
+build-quality/
+build-sanitized/
+quality-report.txt
+*.sfc.srm
+*.smc.srm
+*.srm.tmp
+android/.gradle/
+android/local.properties
+android/app/build/
+android/app/src/main/cpp/SDL/
+android/app/src/main/java/org/libsdl/app/

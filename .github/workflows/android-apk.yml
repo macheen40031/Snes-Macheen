@@ -1,0 +1,82 @@
+name: Snes-Macheen Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'android/**'
+      - 'cpu/**'
+      - 'memory/**'
+      - 'cartridge/**'
+      - 'ppu/**'
+      - 'frontend/**'
+      - 'input/**'
+      - 'timing/**'
+      - 'include/**'
+      - 'CMakeLists.txt'
+      - '.github/workflows/android-apk.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  host-quality:
+    name: Host regression and strict build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install host build tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y cmake ninja-build g++
+      - name: Run release quality gate
+        run: bash quality.sh
+
+  android-apk:
+    name: Build Android APK (ARM64 + ARMv7)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Java 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Set up Gradle 8.13
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.13'
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+      - name: Install pinned Android packages
+        run: |
+          yes | sdkmanager --licenses >/dev/null
+          sdkmanager --install \
+            "platform-tools" \
+            "platforms;android-36" \
+            "build-tools;36.0.0" \
+            "ndk;27.0.12077973" \
+            "cmake;3.22.1"
+      - name: Fetch pinned SDL2 Android source
+        run: bash android/fetch_sdl2.sh
+      - name: Build debug APK
+        run: gradle --no-daemon --stacktrace assembleDebug
+        working-directory: android
+      - name: Verify APK and native ABIs
+        shell: bash
+        run: |
+          set -euo pipefail
+          APK="android/app/build/outputs/apk/debug/app-debug.apk"
+          test -s "$APK"
+          unzip -t "$APK"
+          unzip -l "$APK" | grep -q 'lib/arm64-v8a/libmain.so'
+          unzip -l "$APK" | grep -q 'lib/armeabi-v7a/libmain.so'
+          echo "APK verified: $APK"
+      - name: Upload debug APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Snes-Macheen-debug-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk
+          if-no-files-found: error
+          retention-days: 14

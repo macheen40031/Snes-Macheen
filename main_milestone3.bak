@@ -1,0 +1,52 @@
+#include <iostream>
+#include <iomanip>
+
+#include "cpu.hpp"
+#include "bus.hpp"
+
+int main() {
+
+    Bus bus;
+    CPU cpu;
+
+    // Reset vector
+    bus.write(0x00FFFC, 0x00);
+    bus.write(0x00FFFD, 0x80);
+
+    // Test program
+    bus.write(0x008000, 0xA9); // LDA immediate
+    bus.write(0x008001, 0x42); // Load value 42
+
+    bus.write(0x008002, 0xEA); // NOP
+    bus.write(0x008003, 0x18); // CLC
+    bus.write(0x008004, 0x38); // SEC
+    bus.write(0x008005, 0xDB); // STP
+
+    cpu.reset(bus);
+
+    std::cout << "\n===== SuperNES CPU TEST =====\n\n";
+
+    while (cpu.step(bus)) {
+    }
+
+    std::cout << "\n===== CPU RESULTS =====\n";
+
+    std::cout << "Accumulator: 0x"
+              << std::hex << std::uppercase
+              << std::setw(4) << std::setfill('0')
+              << cpu.A << "\n";
+
+    std::cout << "Program Counter: 0x"
+              << std::setw(4) << cpu.PC << "\n";
+
+    std::cout << "Status Register: 0x"
+              << std::setw(2)
+              << static_cast<int>(cpu.P) << "\n";
+
+    std::cout << "Total Cycles: "
+              << std::dec << cpu.cycles << "\n";
+
+    std::cout << "\nCPU TEST COMPLETE!\n";
+
+    return 0;
+}

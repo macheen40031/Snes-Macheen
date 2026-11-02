@@ -1,0 +1,21 @@
+name: Snes-Macheen Quality Gate
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  linux-quality:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install build tools
+        run: sudo apt-get update && sudo apt-get install -y cmake ninja-build g++ python3
+      - name: Run complete quality gate
+        run: chmod +x quality.sh && ./quality.sh
+      - name: Upload quality report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: snes-macheen-quality-report
+          path: quality-report.txt

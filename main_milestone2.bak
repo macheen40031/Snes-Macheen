@@ -1,0 +1,34 @@
+#include <iostream>
+#include "cpu.hpp"
+#include "bus.hpp"
+
+int main() {
+    Bus bus;
+    CPU cpu;
+
+    bus.write(0x00FFFC, 0x00);
+    bus.write(0x00FFFD, 0x80);
+
+    bus.write(0x008000, 0xEA);
+    bus.write(0x008001, 0x18);
+    bus.write(0x008002, 0x38);
+    bus.write(0x008003, 0xDB);
+
+    cpu.reset(bus);
+
+    std::cout << "\n===== SuperNES CPU TEST =====\n\n";
+
+    while (cpu.step(bus)) {}
+
+    std::cout << "\n===== CPU RESULTS =====\n";
+    std::cout << "Accumulator: " << cpu.A << "\n";
+    std::cout << "Program Counter: " << std::hex
+              << cpu.PC << "\n";
+    std::cout << "Status Register: "
+              << static_cast<int>(cpu.P) << "\n";
+    std::cout << "Total Cycles: " << std::dec
+              << cpu.cycles << "\n";
+    std::cout << "\nCPU TEST COMPLETE!\n";
+
+    return 0;
+}

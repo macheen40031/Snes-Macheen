@@ -1,0 +1,431 @@
+
+========================================
+ Snes-Macheen automated quality gate
+========================================
+Date: 2026-11-01 23:06:14 UTC
+Compiler: c++
+SOURCE SANITY: PASSED
+[PASS] 31 required project files are present
+[PASS] No merge-conflict markers found in C/C++ sources
+[PASS] C/C++ source files are valid UTF-8
+[PASS] Android manifest parses as XML
+[PASS] Android application element exists
+[PASS] Android launcher label is Snes-Macheen
+[PASS] Launcher uses SDLActivity supplied by SDL2
+[PASS] Android launcher activity is explicitly exported
+[PASS] Android launcher intent filter is configured
+[PASS] Gradle plugin and dependency repositories are configured
+[PASS] Android Gradle Plugin version is pinned
+[PASS] Gradle wrapper distribution matches the Android plugin requirement
+[PASS] Android SDK levels are declared
+[PASS] Android package version matches Snes-Macheen v1.13
+[PASS] 64-bit and 32-bit ARM ABIs are declared
+[PASS] Gradle invokes the native CMake project
+[PASS] Android native entrypoint is built as libmain.so
+[PASS] Native target includes SDL2 Android glue and platform libraries
+[PASS] Android native target includes cpu/cpu.cpp
+[PASS] Android native target includes memory/bus.cpp
+[PASS] Android native target includes cartridge/cartridge.cpp
+[PASS] Android native target includes ppu/ppu.cpp
+[PASS] Android native target includes frontend/emulator_session.cpp
+[PASS] Android native target includes frontend/sdl_frontend.cpp
+[PASS] SDL2 dependency fetch is pinned to a known release
+[PASS] SDL2 Android Java/JNI activity glue is fetched
+[PASS] Android build helper verifies and reports the debug APK
+[PASS] SDL frontend handles controller connection lifecycle
+[PASS] SDL frontend handles gamepad buttons and analog axes
+[PASS] SDL controller mapper publishes input to SNES serial ports
+[PASS] SDL frontend uses bounded host frame pacing
+[PASS] SDL frontend uploads and presents the emulator ARGB framebuffer
+[PASS] SDL game selection launches and advances an emulator session
+[PASS] SDL frontend contains the industrial menu shell
+ANDROID SCAFFOLD SANITY: PASSED (31 checks)
+[PASS] SDL2 frontend C++ syntax check (test API stub; no SDL link)
+-- The CXX compiler identification is GNU 14.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (0.1s)
+-- Generating done (0.0s)
+-- Build files have been written to: /mnt/data/snes_macheen_v1.15_release/build-quality
+[1/1] Cleaning all built files...
+Cleaning... 0 files.
+[1/11] Building CXX object CMakeFiles/supernes.dir/ppu/ppu.cpp.o
+[2/11] Building CXX object CMakeFiles/supernes.dir/input/joypad.cpp.o
+[3/11] Building CXX object CMakeFiles/supernes.dir/frontend/controller_mapper.cpp.o
+[4/11] Building CXX object CMakeFiles/supernes.dir/memory/bus.cpp.o
+[5/11] Building CXX object CMakeFiles/supernes.dir/cpu/cpu.cpp.o
+[6/11] Building CXX object CMakeFiles/supernes.dir/timing/frame_pacer.cpp.o
+[7/11] Building CXX object CMakeFiles/supernes.dir/frontend/emulator_session.cpp.o
+[8/11] Building CXX object CMakeFiles/supernes.dir/frontend/frontend_model.cpp.o
+[9/11] Building CXX object CMakeFiles/supernes.dir/cartridge/cartridge.cpp.o
+[10/11] Building CXX object CMakeFiles/supernes.dir/src/main.cpp.o
+[11/11] Linking CXX executable supernes
+
+--- Regression suite details ---
+
+====================================
+       SNES-MACHEEN TEST SUITE
+====================================
+
+--- 8-BIT ALU TEST ---
+PC: 8000 OPCODE: A9 LDA #$7F
+PC: 8002 OPCODE: 18 CLC
+PC: 8003 OPCODE: 69 ADC #$01
+[PASS] 8-bit ADC result
+[PASS] ADC Negative and Overflow flags
+PC: 8005 OPCODE: 38 SEC
+PC: 8006 OPCODE: E9 SBC #$01
+[PASS] 8-bit SBC result
+[PASS] SBC Carry and Overflow flags
+PC: 8008 OPCODE: 29 AND #$0F
+PC: 800A OPCODE: 09 ORA #$80
+PC: 800C OPCODE: 49 EOR #$FF
+PC: 800E OPCODE: C9 CMP #$70
+PC: 8010 OPCODE: E0 CPX #$00
+PC: 8012 OPCODE: C0 CPY #$00
+[PASS] AND, ORA and EOR results
+[PASS] CMP, CPX and CPY Zero/Carry flags
+PC: 8014 OPCODE: E8 INX
+PC: 8015 OPCODE: C8 INY
+PC: 8016 OPCODE: CA DEX
+PC: 8017 OPCODE: 88 DEY
+PC: 8018 OPCODE: AA TAX
+PC: 8019 OPCODE: A8 TAY
+PC: 801A OPCODE: 8A TXA
+PC: 801B OPCODE: 98 TYA
+[PASS] INX, DEX and TAX/TXA operations
+[PASS] INY, DEY and TAY/TYA operations
+PC: 801C OPCODE: DB STP
+[PASS] CPU reached STP instruction
+[PASS] 8-bit instruction sequence length
+[PASS] 8-bit test cycle count
+
+--- 16-BIT ALU TEST ---
+PC: 8000 OPCODE: FB XCE
+PC: 8001 OPCODE: C2 REP #$20
+PC: 8003 OPCODE: A9 LDA #$7FFF
+PC: 8006 OPCODE: 18 CLC
+PC: 8007 OPCODE: 69 ADC #$0001
+[PASS] Native processor mode
+[PASS] 16-bit accumulator mode
+[PASS] 16-bit ADC result
+[PASS] 16-bit ADC Negative and Overflow flags
+PC: 800A OPCODE: 38 SEC
+PC: 800B OPCODE: E9 SBC #$0001
+[PASS] 16-bit SBC result
+[PASS] 16-bit SBC Carry and Overflow flags
+PC: 800E OPCODE: DB STP
+[PASS] CPU reached STP instruction
+[PASS] 16-bit instruction sequence length
+[PASS] 16-bit test cycle count
+
+--- DECIMAL BCD TEST ---
+PC: 8000 OPCODE: A9 LDA #$45
+PC: 8002 OPCODE: F8 SED
+PC: 8003 OPCODE: 18 CLC
+PC: 8004 OPCODE: 69 ADC #$55
+[PASS] BCD 45 + 55 equals 00
+[PASS] BCD addition carry and zero
+PC: 8006 OPCODE: E9 SBC #$01
+[PASS] BCD 00 - 01 equals 99
+[PASS] BCD subtraction borrow and negative
+PC: 8008 OPCODE: D8 CLD
+PC: 8009 OPCODE: DB STP
+[PASS] CPU reached STP instruction
+[PASS] CLD clears Decimal flag
+[PASS] BCD instruction sequence length
+[PASS] BCD test cycle count
+
+--- MEMORY ADDRESSING MODE TEST ---
+PC: 8000 OPCODE: A9 LDA #$42
+PC: 8002 OPCODE: 85 STA direct-page $0A
+PC: 8004 OPCODE: A9 LDA #$00
+PC: 8006 OPCODE: A5 LDA direct-page $0A
+PC: 8008 OPCODE: A9 LDA #$5A
+PC: 800A OPCODE: 9D STA absolute,X $3003
+PC: 800D OPCODE: A9 LDA #$00
+PC: 800F OPCODE: BD LDA absolute,X $3003
+PC: 8012 OPCODE: A9 LDA #$A5
+PC: 8014 OPCODE: 99 STA absolute,Y $3104
+PC: 8017 OPCODE: A9 LDA #$00
+PC: 8019 OPCODE: B9 LDA absolute,Y $3104
+PC: 801C OPCODE: DB STP
+[PASS] CPU reached STP instruction
+[PASS] STA direct-page stores at D + offset
+[PASS] STA absolute,X stores at indexed address
+[PASS] STA absolute,Y stores at indexed address
+[PASS] LDA direct-page, absolute,X and absolute,Y load correctly
+[PASS] Addressing-mode instruction sequence length
+[PASS] Addressing-mode test cycle count
+
+--- INDIRECT AND LONG ADDRESSING TEST ---
+PC: 8000 OPCODE: A1 LDA (dp,X) $004000
+PC: 8002 OPCODE: 91 STA (dp),Y $004103
+PC: 8004 OPCODE: B1 LDA (dp),Y $004103
+[PASS] LDA (direct-page,X) and (direct-page),Y load correctly
+[PASS] STA (direct-page),Y stores through 16-bit pointer
+PC: 8006 OPCODE: A7 LDA [dp] $024200
+PC: 8008 OPCODE: 87 STA [dp] $024200
+PC: 800A OPCODE: B7 LDA [dp],Y $034303
+PC: 800C OPCODE: 97 STA [dp],Y $034303
+PC: 800E OPCODE: DB STP
+[PASS] CPU reached STP instruction
+[PASS] STA [direct-page] stores through 24-bit pointer
+[PASS] STA [direct-page],Y stores through indexed 24-bit pointer
+[PASS] LDA [direct-page],Y loads through indexed 24-bit pointer
+[PASS] Indirect-addressing instruction sequence length
+
+--- BRANCH TEST ---
+PC: 8000 OPCODE: A9 LDA #$00
+PC: 8002 OPCODE: D0 BNE 2 [not taken]
+PC: 8004 OPCODE: F0 BEQ 2 [taken]
+PC: 8008 OPCODE: A9 LDA #$77
+PC: 800A OPCODE: 80 BRA 0 [taken]
+PC: 800C OPCODE: DB STP
+[PASS] CPU reached STP instruction
+[PASS] BEQ branch skips the unwanted instruction
+[PASS] Branch sequence reaches expected PC
+
+--- STACK AND SUBROUTINE TEST ---
+PC: 8000 OPCODE: A9 LDA #$42
+PC: 8002 OPCODE: 48 PHA
+PC: 8003 OPCODE: A9 LDA #$00
+PC: 8005 OPCODE: 68 PLA
+PC: 8006 OPCODE: 38 SEC
+PC: 8007 OPCODE: 08 PHP
+PC: 8008 OPCODE: 18 CLC
+PC: 8009 OPCODE: 28 PLP
+[PASS] PHA and PLA preserve accumulator value
+[PASS] PHP and PLP restore processor status
+[PASS] Stack pointer restored after balanced pushes and pulls
+PC: 800A OPCODE: 20 JSR $8010
+PC: 8010 OPCODE: A9 LDA #$77
+PC: 8012 OPCODE: 60 RTS
+PC: 800D OPCODE: DB STP
+[PASS] CPU reached STP instruction
+[PASS] JSR executes subroutine instructions
+[PASS] RTS returns to STP after JSR
+[PASS] JSR and RTS restore stack pointer
+
+--- SNES MEMORY MAP AND CARTRIDGE TEST ---
+[PASS] WRAM bank $7E mirrors into banks $00-$3F
+[PASS] Low-bank WRAM mirror writes reach bank $7E
+[PASS] Bank $7F accesses the upper 64 KiB of WRAM
+[PASS] LoROM cartridge image loads from a file
+[PASS] Cartridge loader identifies LoROM mapping
+[PASS] LoROM maps program bytes and reset vector
+[PASS] Writes to cartridge ROM are ignored
+PC: 8000 OPCODE: A9 LDA #$5C
+PC: 8002 OPCODE: DB STP
+[PASS] CPU reached STP instruction
+[PASS] CPU executes a program directly from a LoROM cartridge
+[PASS] HiROM cartridge image loads from a file
+[PASS] Cartridge loader identifies and maps HiROM
+[PASS] HiROM header determines 2 KiB SRAM capacity
+[PASS] HiROM SRAM reads and mirrors across low/high banks
+[PASS] HiROM battery-backed SRAM saves to a sidecar file
+[PASS] HiROM SRAM automatically restores from its save file
+[PASS] LoROM with declared SRAM loads
+[PASS] Cartridge header determines 2 KiB SRAM capacity
+[PASS] LoROM SRAM bank accepts writes and reads
+[PASS] LoROM SRAM mirrors across high banks and small capacities
+[PASS] SRAM mapping does not interfere with cartridge ROM
+[PASS] LoROM battery-backed SRAM saves to a sidecar file
+[PASS] LoROM SRAM automatically restores from its save file
+
+--- PPU FOUNDATION TEST ---
+[PASS] PPU registers mirror into high banks
+[PASS] VRAM data port writes the selected VRAM word
+[PASS] CGRAM port stores 15-bit palette colors
+[PASS] Mode 0 BG1 renderer fetches a tile pixel and palette color
+[PASS] BG1 renderer selects the correct byte for odd tile rows
+[PASS] Transparent BG1 tile pixels return color zero
+[PASS] Mode 0 BG2 uses its own tilemap, character base and palette
+[PASS] BG2 horizontal scrolling shifts tile pixels
+[PASS] BG2 horizontal scrolling wraps at the 256-pixel tilemap edge
+[PASS] Mode 0 BG3 renders using its own map and character base
+[PASS] Mode 0 BG4 renders using its own map and character base
+[PASS] Mode 0 priority places BG1 low priority above lower BG layers
+[PASS] Main-screen BG4 enable independently controls its pixels
+[PASS] Forced blank suppresses BG1 pixel output
+[PASS] Main-screen BG1 enable controls pixel output
+[PASS] OAM data is readable through the OAMDATA port
+[PASS] VRAM low-byte read port returns stored data
+[PASS] VRAM high-byte read port returns stored data
+[PASS] Framebuffer has the expected 256x224 pixel count
+[PASS] Framebuffer renders the configured BG1 top-left pixel
+[PASS] Framebuffer preserves transparent BG1 pixels
+[PASS] Framebuffer renders the next tile row correctly
+[PASS] Framebuffer composites non-transparent BG2 pixels over BG1
+[PASS] Framebuffer rendering is deterministic
+
+--- PPU TILE SIZE AND TILEMAP DIMENSION TEST ---
+[PASS] 16x16 BG1 tile fetch selects the top-right 8x8 subtile
+[PASS] 64x32 BG1 map fetches from its second horizontal screen block
+
+--- PPU OBJ SPRITE FOUNDATION TEST ---
+[PASS] OBJ renderer fetches a visible 4bpp sprite pixel
+[PASS] Transparent OBJ pixels do not produce color
+[PASS] Framebuffer composites OBJ pixels over backgrounds
+[PASS] Main-screen OBJ enable independently controls sprite output
+
+--- PPU COLOR MATH TEST ---
+[PASS] Color addition saturates at RGB15 channel maximum
+[PASS] Color subtraction operates independently per RGB channel
+[PASS] Half color math halves the saturated channel result
+[PASS] Half subtract color math clamps and halves the result
+[PASS] COLDATA component-select writes update fixed RGB15 color
+
+--- PPU OBJ SIZE AND TILE-MAP TEST ---
+[PASS] 16x16 OBJ fetches all four 8x8 character tiles
+[PASS] 16x16 OBJ clips pixels outside its selected dimensions
+[PASS] Horizontal flip is applied across the complete multi-tile OBJ
+[PASS] OBSEL base and name-select address the second OBJ character table
+[PASS] Rectangular OBSEL size mode supports a 16x32 small OBJ
+[PASS] 9-bit OBJ X coordinate supports negative left-edge positions
+
+--- PPU MODE 0 PRIORITY TEST ---
+[PASS] OBJ priority 3 is in front of high-priority BG1 in Mode 0
+[PASS] Opaque black OBJ pixel still covers the background
+[PASS] High-priority BG1 is in front of OBJ priority 2
+[PASS] OBJ priority 2 is in front of low-priority BG1
+[PASS] Lower OAM index wins when overlapping OBJ pixels share priority
+
+--- PPU DISPLAY BRIGHTNESS TEST ---
+[PASS] INIDISP full brightness preserves RGB15 color
+[PASS] INIDISP half brightness scales all RGB channels
+[PASS] INIDISP zero brightness outputs black
+[PASS] INIDISP forced blank outputs black at full brightness
+[PASS] ARGB8888 framebuffer converts full-intensity RGB15 white
+[PASS] ARGB8888 framebuffer supplies opaque alpha for every pixel
+[PASS] ARGB8888 framebuffer preserves PPU brightness scaling
+
+--- FRONTEND NAVIGATION AND LIBRARY TEST ---
+[PASS] Frontend starts on the main menu
+[PASS] Main menu exposes six planned sections
+[PASS] Main menu initially selects Game Library
+[PASS] Main menu selection wraps upward
+[PASS] Main menu selection wraps downward
+[PASS] Confirm opens Game Library
+[PASS] Frontend test directory can be created
+[PASS] Frontend scans a readable game directory
+[PASS] Library accepts supported ROM extensions and ignores other files
+[PASS] Game library sorts titles case-insensitively
+[PASS] Game library records ROM file size
+[PASS] Game library selects a valid ROM entry
+[PASS] Game library rejects an out-of-range selection
+[PASS] Back returns from Game Library to main menu
+[PASS] Frontend reports an invalid game directory
+[PASS] Frontend can enter the Playing screen after a successful ROM load
+[PASS] Playing screen status identifies the selected game
+[PASS] Back from Playing returns to the game library
+[PASS] Frontend can display session errors from the emulator layer
+
+--- CONTROLLER MAPPING TEST ---
+[PASS] Standard South face button maps to SNES B
+[PASS] Two face buttons can be held simultaneously
+[PASS] Releasing one button preserves another held button
+[PASS] Controller supports user button remapping
+[PASS] Remapped face button emits its selected SNES bit
+[PASS] Left analog stick crosses left-direction threshold
+[PASS] Analog stick direction updates without stale axis state
+[PASS] Analog deadzone suppresses small stick drift
+[PASS] Controller deadzone can be adjusted
+[PASS] Player two input remains independent from player one
+[PASS] Controller rejects an invalid player index
+[PASS] Controller reset clears both players
+
+--- SNES SERIAL JOYPAD TEST ---
+[PASS] Unconnected SNES joypad serial input reads high
+[PASS] High strobe continuously exposes the live B button
+[PASS] High-strobe B input updates without shifting
+[PASS] Player-one stream returns twelve buttons followed by four high bits
+[PASS] Serial joypad reads shift in logic-high after sixteen bits
+[PASS] Player-two port independently serializes buttons and trailing high bits
+[PASS] Joypad registers mirror in upper system I/O banks
+[PASS] Mirrored joypad register preserves serial read behavior
+
+--- EMULATOR SESSION INTEGRATION TEST ---
+[PASS] Emulator session test directory can be created
+[PASS] Synthetic cartridge fixture is written completely
+[PASS] Emulator session starts without a cartridge
+[PASS] Emulator session loads a LoROM cartridge
+[PASS] Session resets CPU from the cartridge reset vector
+[PASS] Session executes the synthetic LDA and STP instructions
+[PASS] Session reports the CPU STP state
+[PASS] Session reports CPU cycle accumulation
+[PASS] Session exposes a complete PPU framebuffer
+[PASS] Session framebuffer is opaque ARGB8888 output
+[PASS] Session rejects a missing ROM path
+[PASS] Failed replacement load leaves session safely empty
+[PASS] Session unload returns to the empty state
+
+--- HOST FRAME PACER TEST ---
+[PASS] Default host pacing uses the NTSC presentation interval
+[PASS] No elapsed time produces no frame deadline
+[PASS] NTSC pacer accumulates fractional frame time
+[PASS] NTSC pacer emits a frame exactly at its interval
+[PASS] Sub-frame elapsed time carries across updates
+[PASS] Long stalls cap catch-up work to the configured frame limit
+[PASS] Excess overdue frames are counted and backlog is discarded
+[PASS] Pacer reports a bounded sleep until its next frame
+[PASS] PAL mode uses its slower presentation interval
+[PASS] Changing video standard resets fractional frame timing
+[PASS] Pacer reset clears dropped-frame diagnostics
+
+====================================
+      ALL TESTS PASSED
+      Successful checks: 190
+====================================
+Internal ctest changing into directory: /mnt/data/snes_macheen_v1.15_release/build-quality
+Test project /mnt/data/snes_macheen_v1.15_release/build-quality
+    Start 1: supernes_regression
+1/1 Test #1: supernes_regression ..............   Passed    0.66 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   0.66 sec
+
+[INFO] AddressSanitizer + UBSan supported; running sanitized build.
+-- The CXX compiler identification is GNU 14.2.0
+-- Detecting CXX compiler ABI info
+-- Detecting CXX compiler ABI info - done
+-- Check for working CXX compiler: /usr/bin/c++ - skipped
+-- Detecting CXX compile features
+-- Detecting CXX compile features - done
+-- Configuring done (0.2s)
+-- Generating done (0.0s)
+-- Build files have been written to: /mnt/data/snes_macheen_v1.15_release/build-sanitized
+[1/1] Cleaning all built files...
+Cleaning... 0 files.
+[1/11] Building CXX object CMakeFiles/supernes.dir/frontend/controller_mapper.cpp.o
+[2/11] Building CXX object CMakeFiles/supernes.dir/ppu/ppu.cpp.o
+[3/11] Building CXX object CMakeFiles/supernes.dir/input/joypad.cpp.o
+[4/11] Building CXX object CMakeFiles/supernes.dir/memory/bus.cpp.o
+[5/11] Building CXX object CMakeFiles/supernes.dir/cpu/cpu.cpp.o
+[6/11] Building CXX object CMakeFiles/supernes.dir/timing/frame_pacer.cpp.o
+[7/11] Building CXX object CMakeFiles/supernes.dir/frontend/emulator_session.cpp.o
+[8/11] Building CXX object CMakeFiles/supernes.dir/frontend/frontend_model.cpp.o
+[9/11] Building CXX object CMakeFiles/supernes.dir/cartridge/cartridge.cpp.o
+[10/11] Building CXX object CMakeFiles/supernes.dir/src/main.cpp.o
+[11/11] Linking CXX executable supernes
+Internal ctest changing into directory: /mnt/data/snes_macheen_v1.15_release/build-sanitized
+Test project /mnt/data/snes_macheen_v1.15_release/build-sanitized
+    Start 1: supernes_regression
+1/1 Test #1: supernes_regression ..............   Passed    1.97 sec
+
+100% tests passed, 0 tests failed out of 1
+
+Total Test time (real) =   1.97 sec
+[PASS] AddressSanitizer and UndefinedBehaviorSanitizer tests passed.
+
+========================================
+ QUALITY GATE: PASSED
+ Clean strict build: PASS
+ Regression tests: PASS
+ Source sanity: PASS
+========================================
+Report saved to: quality-report.txt

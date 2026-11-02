@@ -1,0 +1,79 @@
+#include "cpu.hpp"
+#include <iostream>
+#include <iomanip>
+
+uint8_t CPU::fetch8(Bus& bus) {
+    uint32_t address =
+        (static_cast<uint32_t>(PB) << 16) | PC;
+
+    uint8_t value = bus.read(address);
+    PC = static_cast<uint16_t>(PC + 1);
+
+    return value;
+}
+
+void CPU::reset(Bus& bus) {
+    A = X = Y = D = 0;
+    S = 0x01FF;
+    DB = PB = 0;
+    P = 0x34;
+
+    emulation = true;
+    stopped = false;
+    cycles = 0;
+
+    uint8_t low = bus.read(0x00FFFC);
+    uint8_t high = bus.read(0x00FFFD);
+
+    PC = static_cast<uint16_t>(
+        low | (static_cast<uint16_t>(high) << 8)
+    );
+}
+
+bool CPU::step(Bus& bus) {
+    if (stopped)
+        return false;
+
+    uint16_t instructionPC = PC;
+    uint8_t opcode = fetch8(bus);
+
+    std::cout << "PC: "
+              << std::hex << std::uppercase
+              << std::setw(4) << std::setfill('0')
+              << instructionPC
+              << " OPCODE: "
+              << std::setw(2)
+              << static_cast<int>(opcode);
+
+    switch (opcode) {
+        case 0xEA:
+            std::cout << " NOP\n";
+            cycles += 2;
+            break;
+
+        case 0x18:
+            P &= 0xFE;
+            std::cout << " CLC\n";
+            cycles += 2;
+            break;
+
+        case 0x38:
+            P |= 0x01;
+            std::cout << " SEC\n";
+            cycles += 2;
+            break;
+
+        case 0xDB:
+            stopped = true;
+            std::cout << " STP\n";
+            cycles += 3;
+            break;
+
+        default:
+            std::cout << " UNKNOWN OPCODE\n";
+            stopped = true;
+            return false;
+    }
+
+    return true;
+}
