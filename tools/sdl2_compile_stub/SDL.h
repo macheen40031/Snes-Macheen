@@ -35,7 +35,7 @@ SDL_Window* SDL_CreateWindow(const char*,int,int,int,int,Uint32); void SDL_GetWi
 SDL_Renderer* SDL_CreateRenderer(SDL_Window*,int,Uint32); void SDL_DestroyRenderer(SDL_Renderer*);
 SDL_Texture* SDL_CreateTexture(SDL_Renderer*,Uint32,int,int,int); void SDL_DestroyTexture(SDL_Texture*);
 int SDL_UpdateTexture(SDL_Texture*,const SDL_Rect*,const void*,int); int SDL_RenderCopy(SDL_Renderer*,SDL_Texture*,const SDL_Rect*,const SDL_Rect*);
-int SDL_RenderSetLogicalSize(SDL_Renderer*,int,int); void SDL_RenderWindowToLogical(SDL_Renderer*,int,int,float*,float*); int SDL_GameControllerEventState(int);
+int SDL_RenderSetLogicalSize(SDL_Renderer*,int,int); int SDL_RenderSetScale(SDL_Renderer*,float,float); int SDL_GetRendererOutputSize(SDL_Renderer*,int*,int*); void SDL_RenderWindowToLogical(SDL_Renderer*,int,int,float*,float*); int SDL_GameControllerEventState(int);
 int SDL_NumJoysticks(); int SDL_IsGameController(int); SDL_GameController* SDL_GameControllerOpen(int);
 SDL_Joystick* SDL_GameControllerGetJoystick(SDL_GameController*); SDL_JoystickID SDL_JoystickInstanceID(SDL_Joystick*);
 const char* SDL_GameControllerName(SDL_GameController*); void SDL_GameControllerClose(SDL_GameController*);
