@@ -62,6 +62,20 @@ jobs:
             "cmake;3.22.1"
       - name: Fetch pinned SDL2 Android source
         run: bash android/fetch_sdl2.sh
+      - name: Fetch Snes9x Libretro Android cores
+        run: |
+          set -euo pipefail
+          mkdir -p android/app/src/main/jniLibs/arm64-v8a android/app/src/main/jniLibs/armeabi-v7a
+          curl --fail --location --retry 3 \
+            https://buildbot.libretro.com/nightly/android/latest/arm64-v8a/snes9x_libretro_android.so.zip \
+            -o "$RUNNER_TEMP/snes9x-arm64.zip"
+          curl --fail --location --retry 3 \
+            https://buildbot.libretro.com/nightly/android/latest/armeabi-v7a/snes9x_libretro_android.so.zip \
+            -o "$RUNNER_TEMP/snes9x-armv7.zip"
+          unzip -o "$RUNNER_TEMP/snes9x-arm64.zip" -d android/app/src/main/jniLibs/arm64-v8a
+          unzip -o "$RUNNER_TEMP/snes9x-armv7.zip" -d android/app/src/main/jniLibs/armeabi-v7a
+          test -s android/app/src/main/jniLibs/arm64-v8a/snes9x_libretro_android.so
+          test -s android/app/src/main/jniLibs/armeabi-v7a/snes9x_libretro_android.so
       - name: Build debug APK
         run: gradle --no-daemon --stacktrace assembleDebug
         working-directory: android
