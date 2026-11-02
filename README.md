@@ -1,4 +1,4 @@
-# Snes-Macheen v1.28
+# Snes-Macheen v1.29
 
 Snes-Macheen is an Android/desktop SNES emulator frontend with an industrial console UI. Version 1.23 introduced the Libretro Snes9x backend for Android. On Android, Snes9x is now the only gameplay backend; the incomplete in-development C++ core is never used as a fallback for retail cartridges.
 
@@ -39,6 +39,14 @@ Snes-Macheen is an Android/desktop SNES emulator frontend with an industrial con
 - Reports the exact unsupported 65C816 opcode and program-bank address when the prototype fallback faults.
 - Preserves the existing ROM picker, persistent ROM folder, controller navigation, and industrial interface.
 
+## v1.29 ROM and video compatibility hardening
+
+- Reports the exact missing Libretro entry point when Snes9x cannot be loaded.
+- Detects ROM read errors and applies a 128 MiB safety limit.
+- Accepts both XRGB8888 and RGB565 Libretro video output and converts frames to the SDL ARGB8888 format.
+- Validates each frame's row pitch before reading pixel data.
+- These changes improve compatibility and diagnostics but do not replace the required physical-device Super Mario World test.
+
 ## v1.28 compatibility milestone
 
 - Makes Android ROM launch fail closed when the bundled Snes9x core cannot be loaded or rejects the selected cartridge.
@@ -46,9 +54,9 @@ Snes-Macheen is an Android/desktop SNES emulator frontend with an industrial con
 - Keeps the prototype fallback available only in desktop development builds.
 - This is a diagnostic/selection fix, not yet proof that a physical-device Super Mario World session works.
 
-## v1.29–v1.32 compatibility work
+## v1.30–v1.32 compatibility work
 
-- v1.29: verify ROM import, copier-header handling, cartridge metadata, and LoROM/HiROM detection against legally dumped test images.
+- v1.30: verify ROM import, copier-header handling, cartridge metadata, and LoROM/HiROM detection against legally dumped test images.
 - v1.30: validate Libretro video pixel format, pitch, framebuffer resizing, aspect ratio, and first-frame presentation.
 - v1.31: validate SNES controller mapping, frame pacing, audio synchronization, SRAM persistence, and state restore.
 - v1.32: add repeatable compatibility checks and a physical-device acceptance run using a legally obtained Super Mario World dump. No copyrighted ROM is stored in the repository or CI artifacts.
