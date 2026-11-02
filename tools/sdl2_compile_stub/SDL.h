@@ -1,9 +1,11 @@
 #pragma once
 #include <cstdint>
-using Uint8 = uint8_t; using Uint32 = uint32_t; using Sint16 = int16_t;
+using Uint8 = uint8_t; using Uint16 = uint16_t; using Uint32 = uint32_t; using Sint16 = int16_t;
 struct SDL_Color { Uint8 r,g,b,a; };
 struct SDL_Rect { int x,y,w,h; };
 struct SDL_Renderer {}; struct SDL_Window {}; struct SDL_Texture {}; struct SDL_GameController {}; struct SDL_Joystick {};
+using SDL_AudioDeviceID = Uint32;
+struct SDL_AudioSpec { int freq; Uint16 format; Uint8 channels; Uint8 silence; Uint16 samples; Uint16 padding; Uint32 size; void (*callback)(void*, Uint8*, int); void* userdata; };
 using SDL_JoystickID = int32_t;
 enum SDL_GameControllerButton { SDL_CONTROLLER_BUTTON_A, SDL_CONTROLLER_BUTTON_B, SDL_CONTROLLER_BUTTON_X, SDL_CONTROLLER_BUTTON_Y, SDL_CONTROLLER_BUTTON_BACK, SDL_CONTROLLER_BUTTON_START, SDL_CONTROLLER_BUTTON_DPAD_UP, SDL_CONTROLLER_BUTTON_DPAD_DOWN, SDL_CONTROLLER_BUTTON_DPAD_LEFT, SDL_CONTROLLER_BUTTON_DPAD_RIGHT, SDL_CONTROLLER_BUTTON_LEFTSHOULDER, SDL_CONTROLLER_BUTTON_RIGHTSHOULDER };
 enum SDL_GameControllerAxis { SDL_CONTROLLER_AXIS_LEFTX, SDL_CONTROLLER_AXIS_LEFTY };
@@ -16,12 +18,18 @@ constexpr Uint32 SDL_RENDERER_ACCELERATED=1, SDL_RENDERER_PRESENTVSYNC=2, SDL_RE
 constexpr int SDL_ENABLE=1, SDL_TEXTUREACCESS_STREAMING=1;
 constexpr int SDL_BLENDMODE_NONE=0, SDL_BLENDMODE_BLEND=1;
 constexpr Uint32 SDL_PIXELFORMAT_ARGB8888=0x16362004u;
+constexpr Uint16 AUDIO_S16SYS=0x8010;
+constexpr int SDL_AUDIO_ALLOW_FREQUENCY_CHANGE=1;
 constexpr int SDLK_UP=1, SDLK_DOWN=2, SDLK_LEFT=3, SDLK_RIGHT=4, SDLK_RETURN=5, SDLK_SPACE=6, SDLK_ESCAPE=7;
 #define SDL_HINT_RENDER_SCALE_QUALITY "SDL_RENDER_SCALE_QUALITY"
 #define SDL_HINT_TOUCH_MOUSE_EVENTS "SDL_TOUCH_MOUSE_EVENTS"
 constexpr Uint32 SDL_QUIT=10, SDL_KEYDOWN=11, SDL_CONTROLLERDEVICEADDED=12, SDL_CONTROLLERDEVICEREMOVED=13, SDL_CONTROLLERBUTTONDOWN=14, SDL_CONTROLLERBUTTONUP=15, SDL_CONTROLLERAXISMOTION=16, SDL_MOUSEBUTTONDOWN=17, SDL_DROPFILE=18, SDL_FINGERDOWN=19;
 constexpr uint8_t SDL_BUTTON_LEFT=1;
-int SDL_Init(Uint32); void SDL_Quit(); int SDL_SetHint(const char*,const char*);
+int SDL_Init(Uint32); int SDL_InitSubSystem(Uint32); void SDL_Quit(); int SDL_SetHint(const char*,const char*);
+SDL_AudioDeviceID SDL_OpenAudioDevice(const char*,int,const SDL_AudioSpec*,SDL_AudioSpec*,int);
+void SDL_CloseAudioDevice(SDL_AudioDeviceID); void SDL_PauseAudioDevice(SDL_AudioDeviceID,int);
+void SDL_ClearQueuedAudio(SDL_AudioDeviceID); Uint32 SDL_GetQueuedAudioSize(SDL_AudioDeviceID);
+int SDL_QueueAudio(SDL_AudioDeviceID,const void*,Uint32); const char* SDL_GetError();
 SDL_Window* SDL_CreateWindow(const char*,int,int,int,int,Uint32); void SDL_GetWindowSize(SDL_Window*,int*,int*); void SDL_DestroyWindow(SDL_Window*);
 SDL_Renderer* SDL_CreateRenderer(SDL_Window*,int,Uint32); void SDL_DestroyRenderer(SDL_Renderer*);
 SDL_Texture* SDL_CreateTexture(SDL_Renderer*,Uint32,int,int,int); void SDL_DestroyTexture(SDL_Texture*);
