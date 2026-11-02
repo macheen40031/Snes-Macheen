@@ -1,3 +1,12 @@
+## v1.24 — Snes9x audio and Android core loading
+
+- Routes Libretro stereo signed-16 audio callbacks into SDL's queued audio device.
+- Caps the audio queue at approximately 250 ms to avoid runaway latency.
+- Keeps audio initialization optional so an unavailable device does not prevent emulator startup.
+- Resolves the core from Android ApplicationInfo.nativeLibraryDir rather than relying on a bare dlopen search name.
+- Explicitly selects joypad devices on both Libretro ports.
+- Added strict syntax checking for the Libretro adapter and static checks for the audio/native-library path.
+
 ## v1.23 — Snes9x backend bring-up
 
 - Added a Libretro adapter that loads the Snes9x core, delivers rendered frames, and forwards two-player joypad input.
