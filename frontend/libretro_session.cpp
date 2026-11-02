@@ -199,7 +199,7 @@ bool LibretroSession::loadRom(const std::string& corePath, const std::string& ro
         std::string code;
         while (currentCheats.size() < 32u && std::getline(cheatFile, code)) {
             if (!code.empty() && code.size() <= 128u &&
-                code.find_first_of("\\r\\n") == std::string::npos) {
+                code.find_first_of("\r\n") == std::string::npos) {
                 api.cheatSet(static_cast<unsigned>(currentCheats.size()), true, code.c_str());
                 currentCheats.push_back(code);
             }
@@ -290,7 +290,7 @@ bool LibretroSession::saveCheats() const {
     {
         std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
         if (!output) return false;
-        for (const auto& code : currentCheats) output << code << '\\n';
+        for (const auto& code : currentCheats) output << code << '\n';
         if (!output.good()) {
             output.close();
             std::remove(temporary.c_str());
@@ -310,7 +310,7 @@ bool LibretroSession::addCheat(const std::string& code) {
         return false;
     }
     if (code.empty() || code.size() > 128u ||
-        code.find_first_of("\\r\\n") != std::string::npos ||
+        code.find_first_of("\r\n") != std::string::npos ||
         currentCheats.size() >= 32u) {
         message = "Cheat must be 1-128 characters; up to 32 codes are supported.";
         return false;
