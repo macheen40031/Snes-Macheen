@@ -187,6 +187,8 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
               bool usingSnes9x, SDL_Texture* gameTexture, SDL_Texture* coreTexture,
               const std::string& inputDiagnostic,
               std::size_t saveActionSelection,
+              int audioVolumePercent, int controllerDeadzone,
+              std::size_t settingsSelection,
               const std::string& cheatInput,
               SDL_Texture* skinTexture) {
     color(renderer, kBackground);
@@ -245,12 +247,18 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
         drawText(renderer, 360, 406, "SDL GAME CONTROLLER EVENTS", 1, kMuted);
         drawText(renderer, 360, 430, "DS4 PAIRING IS DONE IN ANDROID BLUETOOTH SETTINGS", 1, kMuted);
     } else if (model.screen() == FrontendScreen::Settings) {
-        drawText(renderer, 360, 136, "SETTINGS", 3, kRed);
-        drawText(renderer, 360, 214, "VIDEO / DISPLAY", 2, kText);
-        drawText(renderer, 360, 254, "AUDIO", 2, kText);
-        drawText(renderer, 360, 294, "EMULATION", 2, kText);
-        drawText(renderer, 360, 334, "CONTROLS", 2, kText);
-        drawText(renderer, 360, 406, "SETTING CONTROLS WILL BE CONNECTED IN A LATER BUILD", 1, kMuted);
+        drawText(renderer, 360, 136, "SYSTEM SETTINGS", 3, kRed);
+        drawText(renderer, 360, 178, "ADJUST WITH TOUCH, DPAD, OR ARROW KEYS", 1, kMuted);
+        drawButton(renderer, SDL_Rect{360, 206, 190, 46}, "VOLUME -", settingsSelection == 0);
+        drawText(renderer, 566, 222, std::to_string(audioVolumePercent) + "%", 2, kText);
+        drawButton(renderer, SDL_Rect{660, 206, 190, 46}, "VOLUME +", settingsSelection == 0);
+        drawButton(renderer, SDL_Rect{360, 270, 190, 46}, "DEADZONE -", settingsSelection == 1);
+        drawText(renderer, 566, 286, std::to_string(controllerDeadzone), 2, kText);
+        drawButton(renderer, SDL_Rect{660, 270, 190, 46}, "DEADZONE +", settingsSelection == 1);
+        drawButton(renderer, SDL_Rect{360, 334, 490, 46}, "RESET DEFAULTS", settingsSelection == 2);
+        drawText(renderer, 360, 412, "AUDIO VOLUME AFFECTS THE SNES9X OUTPUT", 1, kMuted);
+        drawText(renderer, 360, 444, "STICK DEADZONE: 1000 - 20000", 1, kMuted);
+        drawText(renderer, 360, 484, "CHANGES APPLY IMMEDIATELY", 1, kGreen);
     } else if (model.screen() == FrontendScreen::Saves) {
         drawText(renderer, 360, 136, "SAVES / STATES", 3, kRed);
         drawText(renderer, 360, 178, "SELECT A SAVE-STATE OPERATION", 1, kMuted);
@@ -392,6 +400,9 @@ int main(int argc, char** argv) {
 
     FrontendModel model;
     ControllerMapper mapper;
+    int audioVolumePercent = 100;
+    int controllerDeadzone = ControllerMapper::DEFAULT_DEADZONE;
+    std::size_t settingsSelection = 0;
     EmulatorSession emulator;
     LibretroSession snes9x;
     bool usingSnes9x = false;
@@ -424,6 +435,28 @@ int main(int argc, char** argv) {
     std::size_t saveActionSelection = 0;
     std::string cheatInput;
     bool cheatInputActive = false;
+    auto adjustSetting = [&](int direction) {
+        if (model.screen() != FrontendScreen::Settings || direction == 0) return;
+        if (settingsSelection == 0) {
+            audioVolumePercent = std::clamp(audioVolumePercent + direction * 5, 0, 100);
+            snes9x.setAudioVolumePercent(audioVolumePercent);
+            model.setStatusMessage("Audio volume set to " +
+                std::to_string(audioVolumePercent) + "%.");
+        } else if (settingsSelection == 1) {
+            controllerDeadzone = std::clamp(controllerDeadzone + direction * 500, 1000, 20000);
+            mapper.setDeadzone(static_cast<int16_t>(controllerDeadzone));
+            model.setStatusMessage("Controller deadzone set to " +
+                std::to_string(controllerDeadzone) + ".");
+        }
+    };
+    auto resetSettings = [&]() {
+        audioVolumePercent = 100;
+        controllerDeadzone = ControllerMapper::DEFAULT_DEADZONE;
+        snes9x.setAudioVolumePercent(audioVolumePercent);
+        mapper.setDeadzone(static_cast<int16_t>(controllerDeadzone));
+        settingsSelection = 0;
+        model.setStatusMessage("Settings restored to defaults.");
+    };
     auto launchSelectedGame = [&]() {
         const GameEntry* selected = model.selectedGame();
         if (selected == nullptr) {
@@ -500,6 +533,9 @@ int main(int argc, char** argv) {
     auto confirm = [&]() {
         if (model.screen() == FrontendScreen::Saves) {
             performSaveAction();
+        } else if (model.screen() == FrontendScreen::Settings) {
+            if (settingsSelection == 2) resetSettings();
+            else model.setStatusMessage("Use minus and plus controls to adjust the selected setting.");
         } else if (model.screen() == FrontendScreen::Cheats) {
             submitCheat();
         } else if (model.screen() == FrontendScreen::GameLibrary) {
@@ -546,7 +582,7 @@ int main(int argc, char** argv) {
             model.setStatusMessage("ROM file picker is available in the Android build.");
 #endif
             break;
-        case 2: model.navigateTo(FrontendScreen::Settings); model.setStatusMessage("Settings panel selected."); break;
+        case 2: settingsSelection = 0; model.navigateTo(FrontendScreen::Settings); model.setStatusMessage("Settings panel selected."); break;
         case 3: model.navigateTo(FrontendScreen::Controllers); model.setStatusMessage("Controller setup selected."); break;
         case 4: saveActionSelection = 0; model.navigateTo(FrontendScreen::Saves); model.setStatusMessage("Save-state manager selected."); break;
         case 5: model.navigateTo(FrontendScreen::Cheats); model.setStatusMessage("Cheat manager selected."); break;
@@ -577,6 +613,19 @@ int main(int argc, char** argv) {
                 model.setStatusMessage("Returned to main menu.");
                 return;
             }
+        }
+        if (model.screen() == FrontendScreen::Settings && x >= 356 && x <= 900) {
+            if (y >= 206 && y < 252) {
+                settingsSelection = 0;
+                adjustSetting(x < 610 ? -1 : 1);
+            } else if (y >= 270 && y < 316) {
+                settingsSelection = 1;
+                adjustSetting(x < 610 ? -1 : 1);
+            } else if (y >= 334 && y < 380) {
+                settingsSelection = 2;
+                resetSettings();
+            }
+            return;
         }
         if (model.screen() == FrontendScreen::Cheats && x >= 356 && x <= 966) {
             if (y >= 206 && y < 252) {
@@ -702,18 +751,30 @@ int main(int argc, char** argv) {
                 case SDLK_UP:
                     if (model.screen() == FrontendScreen::Saves)
                         saveActionSelection = saveActionSelection == 0 ? 3 : saveActionSelection - 1;
+                    else if (model.screen() == FrontendScreen::Settings)
+                        settingsSelection = settingsSelection == 0 ? 2 : settingsSelection - 1;
                     else model.handle(FrontendAction::Up);
                     break;
                 case SDLK_DOWN:
                     if (model.screen() == FrontendScreen::Saves)
                         saveActionSelection = (saveActionSelection + 1) % 4;
+                    else if (model.screen() == FrontendScreen::Settings)
+                        settingsSelection = (settingsSelection + 1) % 3;
                     else model.handle(FrontendAction::Down);
                     break;
                 case SDLK_BACKSPACE:
                     if (model.screen() == FrontendScreen::Cheats && cheatInputActive && !cheatInput.empty()) cheatInput.pop_back();
                     break;
-                case SDLK_LEFT: model.handle(FrontendAction::Left); break;
-                case SDLK_RIGHT: model.handle(FrontendAction::Right); break;
+                case SDLK_LEFT:
+                    if (model.screen() == FrontendScreen::Settings && settingsSelection < 2)
+                        adjustSetting(-1);
+                    else model.handle(FrontendAction::Left);
+                    break;
+                case SDLK_RIGHT:
+                    if (model.screen() == FrontendScreen::Settings && settingsSelection < 2)
+                        adjustSetting(1);
+                    else model.handle(FrontendAction::Right);
+                    break;
                 case SDLK_RETURN: case SDLK_SPACE: confirm(); break;
                 case SDLK_ESCAPE:
                     if (model.screen() == FrontendScreen::Cheats && cheatInputActive) {
@@ -750,15 +811,25 @@ int main(int argc, char** argv) {
                         if (pressed && control == GamepadControl::DpadUp) {
                             if (model.screen() == FrontendScreen::Saves)
                                 saveActionSelection = saveActionSelection == 0 ? 3 : saveActionSelection - 1;
+                            else if (model.screen() == FrontendScreen::Settings)
+                                settingsSelection = settingsSelection == 0 ? 2 : settingsSelection - 1;
                             else model.handle(FrontendAction::Up);
                         }
                         else if (pressed && control == GamepadControl::DpadDown) {
                             if (model.screen() == FrontendScreen::Saves)
                                 saveActionSelection = (saveActionSelection + 1) % 4;
+                            else if (model.screen() == FrontendScreen::Settings)
+                                settingsSelection = (settingsSelection + 1) % 3;
                             else model.handle(FrontendAction::Down);
                         }
-                        else if (pressed && control == GamepadControl::DpadLeft) model.handle(FrontendAction::Left);
-                        else if (pressed && control == GamepadControl::DpadRight) model.handle(FrontendAction::Right);
+                        else if (pressed && control == GamepadControl::DpadLeft) {
+                            if (model.screen() == FrontendScreen::Settings && settingsSelection < 2) adjustSetting(-1);
+                            else model.handle(FrontendAction::Left);
+                        }
+                        else if (pressed && control == GamepadControl::DpadRight) {
+                            if (model.screen() == FrontendScreen::Settings && settingsSelection < 2) adjustSetting(1);
+                            else model.handle(FrontendAction::Right);
+                        }
                         else if (pressed && control == GamepadControl::South) confirm();
                         else if (pressed && control == GamepadControl::East) goBack();
                     }
@@ -810,7 +881,8 @@ int main(int argc, char** argv) {
         }
         renderUi(renderer, model, {slots[0].handle, slots[1].handle},
                  emulator, snes9x, usingSnes9x, gameTexture, coreTexture,
-                 inputDiagnostic, saveActionSelection, cheatInput, skinTexture);
+                 inputDiagnostic, saveActionSelection, audioVolumePercent,
+                 controllerDeadzone, settingsSelection, cheatInput, skinTexture);
         SDL_Delay(framePacer.delayMilliseconds());
     }
 
