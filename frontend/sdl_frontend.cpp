@@ -260,7 +260,7 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
             }
         }
         drawText(renderer, 360, 536, "TAP A COVER TO PLAY   UP/DOWN BROWSE", 1, kMuted);
-    }    } else if (model.screen() == FrontendScreen::Controllers) {
+    } else if (model.screen() == FrontendScreen::Controllers) {
         drawText(renderer, 360, 136, "CONTROLLER SETUP", 3, kRed);
         drawText(renderer, 360, 204, "PLAYER 1", 2, kText);
         drawText(renderer, 360, 238, controllerName(controllers[0]), 1,
