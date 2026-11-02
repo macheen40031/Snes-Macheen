@@ -114,6 +114,17 @@ require("snes9x_libretro_android.so.zip" in workflow and
         "snes9x_libretro_android.so" in workflow,
         "Android workflow fetches and verifies the Snes9x core for both ABIs")
 
+libretro_source = (ROOT / "frontend/libretro_session.cpp").read_text(encoding="utf-8")
+require("SDL_OpenAudioDevice" in libretro_source and "SDL_QueueAudio" in libretro_source,
+        "Snes9x Libretro audio callback is connected to SDL queued stereo output")
+require("SDL_GetQueuedAudioSize" in libretro_source and "maxQueuedBytes" in libretro_source,
+        "Snes9x audio buffering is bounded to prevent runaway latency")
+require("androidNativeLibraryPath" in libretro_source and "nativeLibraryDir" in libretro_source,
+        "Android Snes9x core is resolved from the app native-library directory")
+require("setControllerPortDevice(0, kDeviceJoypad)" in libretro_source and
+        "setControllerPortDevice(1, kDeviceJoypad)" in libretro_source,
+        "Libretro core ports are explicitly configured as joypads")
+
 if errors:
     print(f"ANDROID SCAFFOLD SANITY: FAILED ({len(errors)} failures / {checks} checks)")
     sys.exit(1)
