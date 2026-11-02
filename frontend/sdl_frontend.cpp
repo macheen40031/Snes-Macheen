@@ -194,6 +194,23 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
               const std::vector<SDL_Texture*>& coverTextures) {
     color(renderer, kBackground);
     SDL_RenderClear(renderer);
+
+    // Gameplay gets the entire display: no menu chrome, side panel, or inset
+    // game window. The texture is scaled to the full renderer output.
+    if (model.screen() == FrontendScreen::Playing) {
+        SDL_Texture* activeTexture = usingSnes9x ? coreTexture : gameTexture;
+        if (activeTexture != nullptr) {
+            SDL_RenderCopy(renderer, activeTexture, nullptr, nullptr);
+        } else {
+            fill(renderer, SDL_Rect{0, 0, kWidth, kHeight}, SDL_Color{0, 0, 0, 255});
+            drawText(renderer, 24, 24, "VIDEO TEXTURE UNAVAILABLE", 2, kMuted);
+        }
+        drawText(renderer, 18, kHeight - 22, "B / ESC / TAP TO RETURN TO LIBRARY", 1,
+                 SDL_Color{210, 220, 230, 190});
+        SDL_RenderPresent(renderer);
+        return;
+    }
+
     if (skinTexture != nullptr)
         SDL_RenderCopy(renderer, skinTexture, nullptr, nullptr);
     drawPanel(renderer, SDL_Rect{12, 10, kWidth - 24, 90});
@@ -467,6 +484,11 @@ int main(int argc, char** argv) {
     model.setStatusMessage(model.games().empty()
         ? "ROM folder ready. Add games with ROM FOLDER or LOAD ROM."
         : std::to_string(model.games().size()) + " game(s) ready. Tap a cover to play.");
+#ifdef __ANDROID__
+    // This startup hook was missing: without it the background cover downloader
+    // was never launched for an already-imported private ROM folder.
+    callAndroidPickerMethod("importPersistedRomFolder");
+#endif
 
     std::vector<SDL_Texture*> coverTextures;
     auto rebuildCoverTextures = [&]() {
@@ -675,6 +697,11 @@ int main(int argc, char** argv) {
         }
     };
     auto handlePointerTap = [&](int x, int y) {
+        // Touching the full-screen game view returns to the library.
+        if (model.screen() == FrontendScreen::Playing) {
+            goBack();
+            return;
+        }
         if (x >= 30 && x <= 304) {
             for (std::size_t i = 0; i < model.mainMenuItems().size(); ++i) {
                 const int top = 164 + static_cast<int>(i) * 46;
