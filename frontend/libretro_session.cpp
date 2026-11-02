@@ -46,6 +46,7 @@ public:
     CORE_FN(setAudioBatch, void(*)(AudioBatchFn));
     CORE_FN(setInputPoll, void(*)(InputPollFn));
     CORE_FN(setInputState, void(*)(InputStateFn));
+    CORE_FN(setControllerPortDevice, void(*)(unsigned, unsigned));
     CORE_FN(init, void(*)());
     CORE_FN(deinit, void(*)());
     CORE_FN(getSystemInfo, void(*)(SystemInfo*));
@@ -69,6 +70,7 @@ public:
             bind(h, setAudioBatch, "retro_set_audio_sample_batch") &&
             bind(h, setInputPoll, "retro_set_input_poll") &&
             bind(h, setInputState, "retro_set_input_state") &&
+            bind(h, setControllerPortDevice, "retro_set_controller_port_device") &&
             bind(h, init, "retro_init") && bind(h, deinit, "retro_deinit") &&
             bind(h, getSystemInfo, "retro_get_system_info") &&
             bind(h, getAvInfo, "retro_get_system_av_info") &&
