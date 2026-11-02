@@ -396,7 +396,7 @@ int main(int argc, char** argv) {
             return;
         }
         activeRomPath = selected->path.string();
-        usingSnes9x = snes9x.loadRom("libsnes9x_libretro_android.so", activeRomPath);
+        usingSnes9x = snes9x.loadRom("snes9x_libretro_android.so", activeRomPath);
         if (usingSnes9x) {
             model.enterPlaying(selected->title);
             model.setStatusMessage("Snes9x core loaded.");
