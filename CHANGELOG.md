@@ -1,3 +1,9 @@
+## v1.32 — Scaffold sanity version alignment
+
+- Fixes the Android scaffold sanity gate, which was still asserting v1.30/versionCode 40 after the package had advanced to v1.31/versionCode 41.
+- Aligns the sanity check, Android Gradle package metadata, and release documentation on v1.32/versionCode 42.
+- No emulator runtime or ROM behavior changes; this is a release-validation correction.
+
 ## v1.31 — Immersive display and controller readiness
 
 - Hides Android status and navigation bars for an edge-to-edge emulator display.
