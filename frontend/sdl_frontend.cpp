@@ -678,7 +678,10 @@ int main(int argc, char** argv) {
         SDL_Delay(framePacer.delayMilliseconds());
     }
 
-    emulator.saveBatteryRam();
+    if (usingSnes9x && !activeRomPath.empty()) snes9x.saveRam(activeRomPath + ".srm");
+    else emulator.saveBatteryRam();
+    snes9x.unload();
+    if (coreTexture != nullptr) SDL_DestroyTexture(coreTexture);
     for (auto& slot : slots) if (slot.handle != nullptr) SDL_GameControllerClose(slot.handle);
     if (skinTexture != nullptr) SDL_DestroyTexture(skinTexture);
     if (gameTexture != nullptr) SDL_DestroyTexture(gameTexture);
