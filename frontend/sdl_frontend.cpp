@@ -116,23 +116,28 @@ void drawBolt(SDL_Renderer* renderer, int x, int y) {
 }
 
 void drawPanel(SDL_Renderer* renderer, SDL_Rect rect) {
-    fill(renderer, rect, kSteel);
-    // Fine horizontal machining marks give the panel a brushed-steel finish.
-    for (int y = rect.y + 5; y < rect.y + rect.h - 5; y += 7) {
-        color(renderer, (y / 7) % 2 == 0 ? SDL_Color{57, 67, 77, 255}
-                                             : SDL_Color{43, 51, 60, 255});
-        SDL_RenderDrawLine(renderer, rect.x + 5, y, rect.x + rect.w - 6, y);
+    // Keep the chassis translucent: the console artwork remains visible beneath
+    // the controls instead of being buried under three opaque rectangles.
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    fill(renderer, rect, SDL_Color{13, 20, 27, 154});
+    for (int y = rect.y + 6; y < rect.y + rect.h - 6; y += 8) {
+        color(renderer, (y / 8) % 2 == 0 ? SDL_Color{176, 190, 201, 20}
+                                             : SDL_Color{0, 0, 0, 24});
+        SDL_RenderDrawLine(renderer, rect.x + 7, y, rect.x + rect.w - 8, y);
     }
-    outline(renderer, rect, kSteelHighlight, 3);
-    SDL_Rect bevel{rect.x + 4, rect.y + 4, rect.w - 8, rect.h - 8};
-    outline(renderer, bevel, kPanelDark, 2);
-    SDL_Rect inner{rect.x + 8, rect.y + 8, rect.w - 16, rect.h - 16};
-    outline(renderer, inner, kPanelLight, 1);
-    fill(renderer, SDL_Rect{rect.x + 18, rect.y + 5, rect.w - 36, 3}, SDL_Color{125, 137, 147, 255});
+    // Double-cut steel edge, dark inset and machined highlight.
+    outline(renderer, rect, SDL_Color{151, 169, 183, 220}, 2);
+    SDL_Rect bevel{rect.x + 3, rect.y + 3, rect.w - 6, rect.h - 6};
+    outline(renderer, bevel, SDL_Color{5, 9, 13, 230}, 2);
+    SDL_Rect inner{rect.x + 7, rect.y + 7, rect.w - 14, rect.h - 14};
+    outline(renderer, inner, SDL_Color{104, 124, 139, 145}, 1);
+    fill(renderer, SDL_Rect{rect.x + 20, rect.y + 4, rect.w - 40, 2},
+         SDL_Color{194, 207, 216, 155});
     drawBolt(renderer, rect.x + 13, rect.y + 13);
     drawBolt(renderer, rect.x + rect.w - 13, rect.y + 13);
     drawBolt(renderer, rect.x + 13, rect.y + rect.h - 13);
     drawBolt(renderer, rect.x + rect.w - 13, rect.y + rect.h - 13);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
 }
 
 void drawButton(SDL_Renderer* renderer, SDL_Rect rect, const std::string& label,
@@ -177,7 +182,7 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
     drawPanel(renderer, SDL_Rect{12, 10, kWidth - 24, 90});
     drawText(renderer, 38, 30, "SNES-MACHEEN", 4, kText);
     drawText(renderer, 42, 72, "SUPER NINTENDO EMULATOR", 1, kBlue);
-    drawText(renderer, 760, 44, "V1.21 ANDROID BUILD", 1, kGreen);
+    drawText(renderer, 760, 44, "V1.22 ANDROID BUILD", 1, kGreen);
 
     drawPanel(renderer, SDL_Rect{12, 112, 310, 492});
     drawText(renderer, 34, 132, "MAIN MENU", 2, kRed);
@@ -203,8 +208,10 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
             const std::size_t stop = std::min(games.size(), start + 9);
             for (std::size_t i = start; i < stop; ++i) {
                 const int y = 190 + static_cast<int>(i - start) * 42;
+                SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
                 fill(renderer, SDL_Rect{356, y, 610, 34},
-                     i == model.selectedIndex() ? SDL_Color{12, 60, 93, 255} : SDL_Color{17, 23, 30, 255});
+                     i == model.selectedIndex() ? SDL_Color{18, 93, 137, 205} : SDL_Color{8, 14, 20, 145});
+                SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
                 outline(renderer, SDL_Rect{356, y, 610, 34},
                         i == model.selectedIndex() ? kBlue : kPanelDark, 1);
                 drawText(renderer, 368, y + 10, games[i].title, 1, kText);
