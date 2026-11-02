@@ -190,7 +190,8 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
               int audioVolumePercent, int controllerDeadzone,
               std::size_t settingsSelection,
               const std::string& cheatInput,
-              SDL_Texture* skinTexture) {
+              SDL_Texture* skinTexture,
+              const std::vector<SDL_Texture*>& coverTextures) {
     color(renderer, kBackground);
     SDL_RenderClear(renderer);
     if (skinTexture != nullptr)
@@ -220,23 +221,46 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
             drawText(renderer, 360, 206, "NO ROMS FOUND", 2, kMuted);
             drawText(renderer, 360, 238, "PLACE LEGAL ROM DUMPS IN YOUR ROM FOLDER", 1, kMuted);
         } else {
-            const std::size_t start = model.selectedIndex() > 7 ? model.selectedIndex() - 7 : 0;
-            const std::size_t stop = std::min(games.size(), start + 9);
-            for (std::size_t i = start; i < stop; ++i) {
-                const int y = 190 + static_cast<int>(i - start) * 42;
+            // Six large cover-first tiles: the artwork itself is the launch target.
+            const std::size_t start = model.selectedIndex() > 5
+                ? model.selectedIndex() - 5 : 0;
+            const std::size_t visible = std::min<std::size_t>(6, games.size() - start);
+            for (std::size_t slot = 0; slot < visible; ++slot) {
+                const std::size_t i = start + slot;
+                const int col = static_cast<int>(slot % 3);
+                const int row = static_cast<int>(slot / 3);
+                const SDL_Rect tile{356 + col * 202, 184 + row * 176, 190, 164};
+                const bool selected = i == model.selectedIndex();
                 SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-                fill(renderer, SDL_Rect{356, y, 610, 34},
-                     i == model.selectedIndex() ? SDL_Color{18, 93, 137, 205} : SDL_Color{8, 14, 20, 145});
+                fill(renderer, tile, selected ? SDL_Color{17, 63, 88, 238}
+                                              : SDL_Color{5, 12, 19, 210});
                 SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-                outline(renderer, SDL_Rect{356, y, 610, 34},
-                        i == model.selectedIndex() ? kBlue : kPanelDark, 1);
-                drawText(renderer, 368, y + 10, games[i].title, 1, kText);
-                drawText(renderer, 830, y + 10,
-                         std::to_string(games[i].fileSize / 1024u) + " KB", 1, kMuted);
+                outline(renderer, tile, selected ? kBlue : kSteelHighlight,
+                        selected ? 3 : 1);
+
+                const SDL_Rect art{tile.x + 31, tile.y + 7, 128, 116};
+                if (i < coverTextures.size() && coverTextures[i] != nullptr) {
+                    SDL_RenderCopy(renderer, coverTextures[i], nullptr, &art);
+                } else {
+                    // A deliberate, styled placeholder keeps every ROM selectable
+                    // while optional local cover art is missing.
+                    fill(renderer, art, SDL_Color{21, 31, 42, 255});
+                    outline(renderer, art, selected ? kBlue : kPanelLight, 2);
+                    drawText(renderer, art.x + 26, art.y + 35, "SNES", 3, kRed);
+                    drawText(renderer, art.x + 22, art.y + 76, "BOX ART", 1, kMuted);
+                }
+                fill(renderer, SDL_Rect{tile.x + 5, tile.y + 128, tile.w - 10, 29},
+                     selected ? SDL_Color{8, 28, 40, 255} : SDL_Color{8, 14, 20, 255});
+                std::string title = games[i].title;
+                if (title.size() > 28u) title = title.substr(0, 25u) + "...";
+                const int textWidth = static_cast<int>(title.size()) * 6;
+                const int textX = tile.x + std::max(8, (tile.w - textWidth) / 2);
+                drawText(renderer, textX, tile.y + 139, title, 1,
+                         selected ? kText : kMuted);
             }
         }
-        drawText(renderer, 360, 566, "ENTER SELECT   UP/DOWN BROWSE   ESC BACK", 1, kMuted);
-    } else if (model.screen() == FrontendScreen::Controllers) {
+        drawText(renderer, 360, 536, "TAP A COVER TO PLAY   UP/DOWN BROWSE", 1, kMuted);
+    }    } else if (model.screen() == FrontendScreen::Controllers) {
         drawText(renderer, 360, 136, "CONTROLLER SETUP", 3, kRed);
         drawText(renderer, 360, 204, "PLAYER 1", 2, kText);
         drawText(renderer, 360, 238, controllerName(controllers[0]), 1,
@@ -430,6 +454,34 @@ int main(int argc, char** argv) {
         else
             model.setStatusMessage("ROM directory is not available. Choose a ROM folder.");
     }
+
+    std::vector<SDL_Texture*> coverTextures;
+    auto rebuildCoverTextures = [&]() {
+        for (SDL_Texture* texture : coverTextures)
+            if (texture != nullptr) SDL_DestroyTexture(texture);
+        coverTextures.clear();
+        coverTextures.reserve(model.games().size());
+        for (const GameEntry& game : model.games()) {
+            SDL_Texture* texture = nullptr;
+            const std::filesystem::path localCover =
+                game.path.parent_path() / "covers" / (game.title + ".bmp");
+            SDL_RWops* coverFile = SDL_RWFromFile(localCover.string().c_str(), "rb");
+            if (coverFile == nullptr) {
+                const std::filesystem::path sharedCover =
+                    romDirectory / "covers" / (game.title + ".bmp");
+                coverFile = SDL_RWFromFile(sharedCover.string().c_str(), "rb");
+            }
+            if (coverFile != nullptr) {
+                SDL_Surface* surface = SDL_LoadBMP_RW(coverFile, 1);
+                if (surface != nullptr) {
+                    texture = SDL_CreateTextureFromSurface(renderer, surface);
+                    SDL_FreeSurface(surface);
+                }
+            }
+            coverTextures.push_back(texture);
+        }
+    };
+    rebuildCoverTextures();
 
     std::string activeRomPath;
     std::size_t saveActionSelection = 0;
@@ -661,11 +713,17 @@ int main(int argc, char** argv) {
             return;
         }
         if (model.screen() == FrontendScreen::GameLibrary &&
-            x >= 356 && x <= 966 && y >= 190 && y < 568 && !model.games().empty()) {
-            const std::size_t start = model.selectedIndex() > 7 ? model.selectedIndex() - 7 : 0;
-            const std::size_t row = static_cast<std::size_t>((y - 190) / 42);
-            const std::size_t index = start + row;
-            if (index < model.games().size() && model.selectIndex(index)) confirm();
+            x >= 356 && x < 962 && y >= 184 && y < 532 && !model.games().empty()) {
+            const std::size_t start = model.selectedIndex() > 5
+                ? model.selectedIndex() - 5 : 0;
+            const int col = (x - 356) / 202;
+            const int row = (y - 184) / 176;
+            if (col >= 0 && col < 3 && row >= 0 && row < 2) {
+                const std::size_t index = start +
+                    static_cast<std::size_t>(row * 3 + col);
+                if (index < model.games().size() && model.selectIndex(index))
+                    launchSelectedGame();
+            }
         }
     };
 
@@ -735,10 +793,12 @@ int main(int argc, char** argv) {
                     std::error_code dropError;
                     if (std::filesystem::is_directory(droppedPath, dropError) && !dropError) {
                         if (model.scanGameDirectory(droppedPath)) {
+                            rebuildCoverTextures();
                             model.setStatusMessage("Persistent ROM folder imported. " +
                                 std::to_string(model.games().size()) + " supported ROM file(s) ready.");
                         }
                     } else if (model.scanGameDirectory(droppedPath.parent_path())) {
+                        rebuildCoverTextures();
                         const auto& games = model.games();
                         const auto found = std::find_if(games.begin(), games.end(),
                             [&](const GameEntry& game) { return game.path == droppedPath; });
@@ -895,7 +955,8 @@ int main(int argc, char** argv) {
         renderUi(renderer, model, {slots[0].handle, slots[1].handle},
                  emulator, snes9x, usingSnes9x, gameTexture, coreTexture,
                  inputDiagnostic, saveActionSelection, audioVolumePercent,
-                 controllerDeadzone, settingsSelection, cheatInput, skinTexture);
+                 controllerDeadzone, settingsSelection, cheatInput, skinTexture,
+                 coverTextures);
         SDL_Delay(framePacer.delayMilliseconds());
     }
 
@@ -904,6 +965,8 @@ int main(int argc, char** argv) {
     snes9x.unload();
     if (coreTexture != nullptr) SDL_DestroyTexture(coreTexture);
     for (auto& slot : slots) if (slot.handle != nullptr) SDL_GameControllerClose(slot.handle);
+    for (SDL_Texture* texture : coverTextures)
+        if (texture != nullptr) SDL_DestroyTexture(texture);
     if (skinTexture != nullptr) SDL_DestroyTexture(skinTexture);
     if (gameTexture != nullptr) SDL_DestroyTexture(gameTexture);
     SDL_DestroyRenderer(renderer);
