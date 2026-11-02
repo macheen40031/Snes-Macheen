@@ -37,6 +37,7 @@ private:
     std::vector<uint32_t> pixels;
     unsigned frameWidth = 256;
     unsigned frameHeight = 224;
+    unsigned pixelFormat = 1; // Libretro XRGB8888 until the core selects another format.
     uint16_t pads[2]{};
     uint32_t audioDevice = 0;
     int audioFrequency = 0;

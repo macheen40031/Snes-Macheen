@@ -7,6 +7,12 @@ import android.content.SharedPreferences;
 import android.database.Cursor;
 import android.net.Uri;
 import android.os.Bundle;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.os.Build;
+import android.view.View;
+import android.view.WindowInsets;
+import android.view.WindowInsetsController;
 import android.provider.OpenableColumns;
 import android.provider.DocumentsContract;
 
@@ -15,6 +21,14 @@ import org.libsdl.app.SDLActivity;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.BufferedInputStream;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.util.Locale;
@@ -31,6 +45,44 @@ public final class SnesMacheenActivity extends SDLActivity {
     protected void onCreate(Bundle savedInstanceState) {
         instance = this;
         super.onCreate(savedInstanceState);
+        applyImmersiveMode();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        applyImmersiveMode();
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus) {
+        super.onWindowFocusChanged(hasFocus);
+        if (hasFocus) applyImmersiveMode();
+    }
+
+    /**
+     * Keep the emulator edge-to-edge while it is open. On Android 11+ use
+     * WindowInsetsController; older releases use the sticky immersive flags.
+     * A swipe from an edge can still temporarily reveal system controls.
+     */
+    private void applyImmersiveMode() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            WindowInsetsController controller = getWindow().getInsetsController();
+            if (controller != null) {
+                controller.setSystemBarsBehavior(
+                    WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE);
+                controller.hide(WindowInsets.Type.statusBars() |
+                    WindowInsets.Type.navigationBars());
+            }
+        } else {
+            getWindow().getDecorView().setSystemUiVisibility(
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY |
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE |
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN |
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION |
+                View.SYSTEM_UI_FLAG_FULLSCREEN);
+        }
     }
 
     @Override
@@ -84,7 +136,10 @@ public final class SnesMacheenActivity extends SDLActivity {
             String selectedPath = "";
             try {
                 File copied = copyRomToPrivateStorage(uri);
-                if (copied != null) selectedPath = copied.getAbsolutePath();
+                if (copied != null) {
+                    selectedPath = copied.getAbsolutePath();
+                    downloadMissingCoversSync(copied.getParentFile());
+                }
             } catch (IOException ignored) {
                 selectedPath = "";
             }
@@ -114,15 +169,20 @@ public final class SnesMacheenActivity extends SDLActivity {
         if (activity == null) return;
         SharedPreferences preferences = activity.getSharedPreferences(PREFS_NAME, MODE_PRIVATE);
         String savedUri = preferences.getString(PREF_ROM_TREE_URI, null);
-        if (savedUri == null || savedUri.isEmpty()) return;
+        if (savedUri == null || savedUri.isEmpty()) {
+            activity.downloadMissingCovers(new File(activity.getFilesDir(), "roms").getAbsolutePath());
+            return;
+        }
         activity.importTreeAsync(Uri.parse(savedUri));
     }
 
     private void importTreeAsync(Uri treeUri) {
         new Thread(() -> {
             try {
+                File romDirectory = new File(getFilesDir(), "roms");
                 importRomFilesFromTree(treeUri);
-                SDLActivity.onNativeDropFile(new File(getFilesDir(), "roms").getAbsolutePath());
+                downloadMissingCoversSync(romDirectory);
+                SDLActivity.onNativeDropFile(romDirectory.getAbsolutePath());
             } catch (Exception exception) {
                 SDLActivity.onNativeDropFile("");
             }
@@ -191,6 +251,141 @@ public final class SnesMacheenActivity extends SDLActivity {
         }
         if (name == null || name.trim().isEmpty()) name = uri.getLastPathSegment();
         return name == null ? "selected-rom" : name;
+    }
+
+    /** Download missing SNES box art to the private ROM folder. */
+    public static void downloadMissingCovers(String directoryPath) {
+        final SnesMacheenActivity activity = instance;
+        if (activity == null || directoryPath == null) return;
+        new Thread(() -> {
+            activity.downloadMissingCoversSync(new File(directoryPath));
+            SDLActivity.onNativeDropFile(directoryPath);
+        }, "SnesMacheenCoverDownload").start();
+    }
+
+    private void downloadMissingCoversSync(File romDirectory) {
+        if (romDirectory == null || !romDirectory.isDirectory()) return;
+        File coverDirectory = new File(romDirectory, "covers");
+        if (!coverDirectory.exists() && !coverDirectory.mkdirs()) return;
+        File[] roms = romDirectory.listFiles((dir, name) -> isSupportedRom(name));
+        if (roms == null) return;
+        int attempted = 0;
+        for (File rom : roms) {
+            if (attempted++ >= 200) break;
+            String filename = rom.getName();
+            String stem = filename.substring(0, filename.lastIndexOf('.'));
+            File destination = new File(coverDirectory, stem + ".bmp");
+            if (destination.isFile() && destination.length() > 54) continue;
+            for (String candidate : coverNameCandidates(stem)) {
+                HttpURLConnection connection = null;
+                try {
+                    String encoded = URLEncoder.encode(candidate, StandardCharsets.UTF_8.name())
+                        .replace("+", "%20");
+                    String base = "https://thumbnails.libretro.com/Nintendo%20-%20Super%20Nintendo%20Entertainment%20System/Named_Boxarts/";
+                    connection = (HttpURLConnection) new URL(base + encoded + ".png").openConnection();
+                    connection.setConnectTimeout(3500);
+                    connection.setReadTimeout(6000);
+                    connection.setRequestProperty("User-Agent", "Snes-Macheen/1.0 (Android)");
+                    connection.setInstanceFollowRedirects(true);
+                    if (connection.getResponseCode() != HttpURLConnection.HTTP_OK) continue;
+                    try (InputStream input = new BufferedInputStream(connection.getInputStream())) {
+                        Bitmap bitmap = BitmapFactory.decodeStream(input);
+                        if (bitmap != null) {
+                            writeBitmapAsBmp(bitmap, destination);
+                            bitmap.recycle();
+                            if (destination.isFile() && destination.length() > 54) break;
+                        }
+                    }
+                } catch (Exception ignored) {
+                    // Missing regional variants and offline access are non-fatal.
+                } finally {
+                    if (connection != null) connection.disconnect();
+                }
+            }
+        }
+    }
+
+    private ArrayList<String> coverNameCandidates(String stem) {
+        Set<String> names = new LinkedHashSet<>();
+        names.add(stem);
+        names.add(toTitleCase(stem));
+        String upper = stem.toUpperCase(Locale.ROOT);
+        if (upper.endsWith(" USA")) {
+            String base = stem.substring(0, stem.length() - 4).trim();
+            names.add(base + " (USA)");
+            names.add(toTitleCase(base) + " (USA)");
+            names.add(toTitleCase(base));
+        } else if (upper.endsWith(" EUR") || upper.endsWith(" EUROPE")) {
+            String base = stem.replaceFirst("(?i)\\s+(EUR|EUROPE)$", "").trim();
+            names.add(toTitleCase(base) + " (Europe)");
+        } else if (upper.endsWith(" JAP") || upper.endsWith(" JAPAN")) {
+            String base = stem.replaceFirst("(?i)\\s+(JAP|JAPAN)$", "").trim();
+            names.add(toTitleCase(base) + " (Japan)");
+        }
+        return new ArrayList<>(names);
+    }
+
+    private String toTitleCase(String value) {
+        String lower = value.toLowerCase(Locale.ROOT);
+        StringBuilder result = new StringBuilder(lower.length());
+        boolean capitalize = true;
+        for (int i = 0; i < lower.length(); i++) {
+            char ch = lower.charAt(i);
+            result.append(capitalize ? Character.toUpperCase(ch) : ch);
+            capitalize = Character.isWhitespace(ch) || ch == '-' || ch == '(';
+        }
+        return result.toString();
+    }
+
+    private void writeBitmapAsBmp(Bitmap source, File destination) throws IOException {
+        int width = source.getWidth();
+        int height = source.getHeight();
+        if (width > 320 || height > 480) {
+            float scale = Math.min(320f / width, 480f / height);
+            Bitmap scaled = Bitmap.createScaledBitmap(source,
+                Math.max(1, Math.round(width * scale)),
+                Math.max(1, Math.round(height * scale)), true);
+            if (scaled != source) {
+                writeBitmapAsBmp(scaled, destination);
+                scaled.recycle();
+                return;
+            }
+        }
+        int rowBytes = ((width * 3 + 3) / 4) * 4;
+        int imageBytes = rowBytes * height;
+        try (OutputStream output = new FileOutputStream(destination, false)) {
+            output.write('B'); output.write('M');
+            writeIntLE(output, 54 + imageBytes);
+            writeIntLE(output, 0); writeIntLE(output, 54);
+            writeIntLE(output, 40); writeIntLE(output, width); writeIntLE(output, height);
+            writeShortLE(output, 1); writeShortLE(output, 24);
+            writeIntLE(output, 0); writeIntLE(output, imageBytes);
+            writeIntLE(output, 2835); writeIntLE(output, 2835);
+            writeIntLE(output, 0); writeIntLE(output, 0);
+            int[] pixels = new int[width];
+            byte[] row = new byte[rowBytes];
+            for (int y = height - 1; y >= 0; y--) {
+                source.getPixels(pixels, 0, width, 0, y, width, 1);
+                int offset = 0;
+                for (int pixel : pixels) {
+                    row[offset++] = (byte) (pixel & 0xff);
+                    row[offset++] = (byte) ((pixel >> 8) & 0xff);
+                    row[offset++] = (byte) ((pixel >> 16) & 0xff);
+                }
+                while (offset < row.length) row[offset++] = 0;
+                output.write(row);
+            }
+            output.flush();
+        }
+    }
+
+    private void writeIntLE(OutputStream output, int value) throws IOException {
+        output.write(value & 0xff); output.write((value >> 8) & 0xff);
+        output.write((value >> 16) & 0xff); output.write((value >> 24) & 0xff);
+    }
+
+    private void writeShortLE(OutputStream output, int value) throws IOException {
+        output.write(value & 0xff); output.write((value >> 8) & 0xff);
     }
 
     private boolean isSupportedRom(String name) {

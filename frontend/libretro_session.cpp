@@ -109,11 +109,15 @@ public:
     CORE_FN(cheatReset, void(*)());
     CORE_FN(cheatSet, void(*)(unsigned, bool, const char*));
 
+    std::string missingSymbol;
+
     template<class T> bool bind(void* handle, T& target, const char* symbol) {
         target = reinterpret_cast<T>(dlsym(handle, symbol));
+        if (target == nullptr) missingSymbol = symbol;
         return target != nullptr;
     }
     bool load(void* h) {
+        missingSymbol.clear();
         return bind(h, apiVersion, "retro_api_version") &&
             bind(h, setEnvironment, "retro_set_environment") &&
             bind(h, setVideo, "retro_set_video_refresh") &&
@@ -153,21 +157,50 @@ bool LibretroSession::loadRom(const std::string& corePath, const std::string& ro
 #else
     const std::string& resolvedCorePath = corePath;
 #endif
-    (void)dlerror();
-    library = dlopen(resolvedCorePath.c_str(), RTLD_NOW | RTLD_LOCAL);
-    if (!library) {
-        const char* loaderError = dlerror();
-        message = std::string("Unable to load Snes9x core at ") + resolvedCorePath +
-            ": " + (loaderError ? loaderError : "unknown dynamic loader error");
+    // Android may expose app-bundled JNI libraries through the app's
+    // nativeLibraryDir, while the class-loader namespace can also resolve
+    // the same library by its soname. Try both before reporting a hard error.
+    std::string loaderErrors;
+    auto tryLoadCore = [&](const std::string& candidate) {
+        if (candidate.empty()) return false;
+        (void)dlerror();
+        library = dlopen(candidate.c_str(), RTLD_NOW | RTLD_LOCAL);
+        if (library != nullptr) return true;
+        const char* error = dlerror();
+        if (!loaderErrors.empty()) loaderErrors += " | ";
+        loaderErrors += candidate + ": " +
+            (error != nullptr ? error : "unknown dynamic loader error");
+        return false;
+    };
+
+    bool coreLoaded = tryLoadCore(resolvedCorePath);
+#if defined(__ANDROID__)
+    if (!coreLoaded && resolvedCorePath != corePath)
+        coreLoaded = tryLoadCore(corePath);
+#endif
+    if (!coreLoaded) {
+        message = "Snes9x core could not be opened. Tried: " + loaderErrors;
         return false;
     }
-    if (!api.load(library)) { message = "Snes9x core is missing required Libretro functions."; unload(); return false; }
+    if (!api.load(library)) {
+        message = "Snes9x core is missing Libretro function: " +
+            (api.missingSymbol.empty() ? std::string("unknown") : api.missingSymbol);
+        unload();
+        return false;
+    }
     if (api.apiVersion() != kApiVersion) { message = "Unsupported Libretro API version."; unload(); return false; }
 
     std::ifstream file(romPath, std::ios::binary);
     if (!file) { message = "Unable to open selected ROM."; unload(); return false; }
     std::vector<uint8_t> rom((std::istreambuf_iterator<char>(file)), {});
+    if (file.bad()) { message = "I/O error while reading the selected ROM."; unload(); return false; }
     if (rom.empty()) { message = "Selected ROM is empty."; unload(); return false; }
+    constexpr std::size_t kMaximumRomBytes = 128u * 1024u * 1024u;
+    if (rom.size() > kMaximumRomBytes) {
+        message = "Selected ROM exceeds the 128 MiB safety limit.";
+        unload();
+        return false;
+    }
 
     active = this;
     api.setEnvironment(environment);
@@ -437,22 +470,49 @@ bool LibretroSession::loadState(const std::string& path) {
 }
 
 bool LibretroSession::environment(unsigned command, void* data) {
-    if (command == kEnvSetPixelFormat && data) {
+    if (command == kEnvSetPixelFormat && data && active) {
         const auto format = *static_cast<unsigned*>(data);
-        return format == kPixelXrgb8888;
+        if (format != kPixelXrgb8888 && format != kPixelRgb565) return false;
+        active->pixelFormat = format;
+        return true;
     }
     return false;
 }
 
 void LibretroSession::videoRefresh(const void* data, unsigned width, unsigned height, std::size_t pitch) {
     if (!active || !data || width == 0 || height == 0 || width > 1024 || height > 1024) return;
+
+    const std::size_t bytesPerPixel =
+        active->pixelFormat == kPixelRgb565 ? sizeof(uint16_t) : sizeof(uint32_t);
+    const std::size_t minimumPitch = static_cast<std::size_t>(width) * bytesPerPixel;
+    if (pitch < minimumPitch) return;
+
     active->frameWidth = width;
     active->frameHeight = height;
     active->pixels.resize(static_cast<std::size_t>(width) * height);
     const auto* src = static_cast<const uint8_t*>(data);
     for (unsigned y = 0; y < height; ++y) {
-        const auto* row = reinterpret_cast<const uint32_t*>(src + y * pitch);
-        for (unsigned x = 0; x < width; ++x) active->pixels[static_cast<std::size_t>(y) * width + x] = row[x] | 0xff000000u;
+        const auto* row = src + static_cast<std::size_t>(y) * pitch;
+        for (unsigned x = 0; x < width; ++x) {
+            uint32_t argb = 0xff000000u;
+            if (active->pixelFormat == kPixelRgb565) {
+                uint16_t rgb565 = 0;
+                std::memcpy(&rgb565, row + static_cast<std::size_t>(x) * sizeof(rgb565),
+                            sizeof(rgb565));
+                const uint32_t red = (rgb565 >> 11u) & 0x1fu;
+                const uint32_t green = (rgb565 >> 5u) & 0x3fu;
+                const uint32_t blue = rgb565 & 0x1fu;
+                argb |= ((red * 255u + 15u) / 31u) << 16u;
+                argb |= ((green * 255u + 31u) / 63u) << 8u;
+                argb |= (blue * 255u + 15u) / 31u;
+            } else {
+                uint32_t xrgb = 0;
+                std::memcpy(&xrgb, row + static_cast<std::size_t>(x) * sizeof(xrgb),
+                            sizeof(xrgb));
+                argb |= xrgb & 0x00ffffffu;
+            }
+            active->pixels[static_cast<std::size_t>(y) * width + x] = argb;
+        }
     }
 }
 void LibretroSession::audioSample(int16_t left, int16_t right) {

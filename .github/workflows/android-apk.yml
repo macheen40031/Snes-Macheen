@@ -3,7 +3,7 @@ name: Snes-Macheen Android APK
 on:
   workflow_dispatch:
   push:
-    branches: [ main, master, feature/snes9x-backend ]
+    branches: [ main, master, feature/snes9x-backend, feature/snes9x-compatibility-1.28-1.32 ]
     paths:
       - 'android/**'
       - 'cpu/**'

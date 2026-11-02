@@ -190,15 +190,33 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
               int audioVolumePercent, int controllerDeadzone,
               std::size_t settingsSelection,
               const std::string& cheatInput,
-              SDL_Texture* skinTexture) {
+              SDL_Texture* skinTexture,
+              const std::vector<SDL_Texture*>& coverTextures) {
     color(renderer, kBackground);
     SDL_RenderClear(renderer);
+
+    // Gameplay gets the entire display: no menu chrome, side panel, or inset
+    // game window. The texture is scaled to the full renderer output.
+    if (model.screen() == FrontendScreen::Playing) {
+        SDL_Texture* activeTexture = usingSnes9x ? coreTexture : gameTexture;
+        if (activeTexture != nullptr) {
+            SDL_RenderCopy(renderer, activeTexture, nullptr, nullptr);
+        } else {
+            fill(renderer, SDL_Rect{0, 0, kWidth, kHeight}, SDL_Color{0, 0, 0, 255});
+            drawText(renderer, 24, 24, "VIDEO TEXTURE UNAVAILABLE", 2, kMuted);
+        }
+        drawText(renderer, 18, kHeight - 22, "B / ESC / TAP TO RETURN TO LIBRARY", 1,
+                 SDL_Color{210, 220, 230, 190});
+        SDL_RenderPresent(renderer);
+        return;
+    }
+
     if (skinTexture != nullptr)
         SDL_RenderCopy(renderer, skinTexture, nullptr, nullptr);
     drawPanel(renderer, SDL_Rect{12, 10, kWidth - 24, 90});
     drawText(renderer, 38, 30, "SNES-MACHEEN", 4, kText);
     drawText(renderer, 42, 72, "SUPER NINTENDO EMULATOR", 1, kBlue);
-    drawText(renderer, 760, 44, "V1.27 ANDROID BUILD", 1, kGreen);
+    drawText(renderer, 760, 44, "V1.29 ANDROID BUILD", 1, kGreen);
 
     drawPanel(renderer, SDL_Rect{12, 112, 310, 492});
     drawText(renderer, 34, 132, "MAIN MENU", 2, kRed);
@@ -220,22 +238,45 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
             drawText(renderer, 360, 206, "NO ROMS FOUND", 2, kMuted);
             drawText(renderer, 360, 238, "PLACE LEGAL ROM DUMPS IN YOUR ROM FOLDER", 1, kMuted);
         } else {
-            const std::size_t start = model.selectedIndex() > 7 ? model.selectedIndex() - 7 : 0;
-            const std::size_t stop = std::min(games.size(), start + 9);
-            for (std::size_t i = start; i < stop; ++i) {
-                const int y = 190 + static_cast<int>(i - start) * 42;
+            // Six large cover-first tiles: the artwork itself is the launch target.
+            const std::size_t start = model.selectedIndex() > 5
+                ? model.selectedIndex() - 5 : 0;
+            const std::size_t visible = std::min<std::size_t>(6, games.size() - start);
+            for (std::size_t slot = 0; slot < visible; ++slot) {
+                const std::size_t i = start + slot;
+                const int col = static_cast<int>(slot % 3);
+                const int row = static_cast<int>(slot / 3);
+                const SDL_Rect tile{356 + col * 202, 184 + row * 176, 190, 164};
+                const bool selected = i == model.selectedIndex();
                 SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-                fill(renderer, SDL_Rect{356, y, 610, 34},
-                     i == model.selectedIndex() ? SDL_Color{18, 93, 137, 205} : SDL_Color{8, 14, 20, 145});
+                fill(renderer, tile, selected ? SDL_Color{17, 63, 88, 238}
+                                              : SDL_Color{5, 12, 19, 210});
                 SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-                outline(renderer, SDL_Rect{356, y, 610, 34},
-                        i == model.selectedIndex() ? kBlue : kPanelDark, 1);
-                drawText(renderer, 368, y + 10, games[i].title, 1, kText);
-                drawText(renderer, 830, y + 10,
-                         std::to_string(games[i].fileSize / 1024u) + " KB", 1, kMuted);
+                outline(renderer, tile, selected ? kBlue : kSteelHighlight,
+                        selected ? 3 : 1);
+
+                const SDL_Rect art{tile.x + 31, tile.y + 7, 128, 116};
+                if (i < coverTextures.size() && coverTextures[i] != nullptr) {
+                    SDL_RenderCopy(renderer, coverTextures[i], nullptr, &art);
+                } else {
+                    // A deliberate, styled placeholder keeps every ROM selectable
+                    // while optional local cover art is missing.
+                    fill(renderer, art, SDL_Color{21, 31, 42, 255});
+                    outline(renderer, art, selected ? kBlue : kPanelLight, 2);
+                    drawText(renderer, art.x + 26, art.y + 35, "SNES", 3, kRed);
+                    drawText(renderer, art.x + 22, art.y + 76, "BOX ART", 1, kMuted);
+                }
+                fill(renderer, SDL_Rect{tile.x + 5, tile.y + 128, tile.w - 10, 29},
+                     selected ? SDL_Color{8, 28, 40, 255} : SDL_Color{8, 14, 20, 255});
+                std::string title = games[i].title;
+                if (title.size() > 28u) title = title.substr(0, 25u) + "...";
+                const int textWidth = static_cast<int>(title.size()) * 6;
+                const int textX = tile.x + std::max(8, (tile.w - textWidth) / 2);
+                drawText(renderer, textX, tile.y + 139, title, 1,
+                         selected ? kText : kMuted);
             }
         }
-        drawText(renderer, 360, 566, "ENTER SELECT   UP/DOWN BROWSE   ESC BACK", 1, kMuted);
+        drawText(renderer, 360, 536, "TAP A COVER TO PLAY   UP/DOWN BROWSE", 1, kMuted);
     } else if (model.screen() == FrontendScreen::Controllers) {
         drawText(renderer, 360, 136, "CONTROLLER SETUP", 3, kRed);
         drawText(renderer, 360, 204, "PLAYER 1", 2, kText);
@@ -369,6 +410,7 @@ bool callAndroidPickerMethod(const char* methodName) {
     env->DeleteLocalRef(activity);
     return success;
 }
+
 #endif
 }
 
@@ -387,7 +429,15 @@ int main(int argc, char** argv) {
         SDL_RENDERER_ACCELERATED | SDL_RENDERER_PRESENTVSYNC);
     if (renderer == nullptr) renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_SOFTWARE);
     if (renderer == nullptr) { SDL_DestroyWindow(window); SDL_Quit(); return 4; }
-    SDL_RenderSetLogicalSize(renderer, kWidth, kHeight);
+    // The old fixed logical viewport letterboxed on wide Android screens.
+    // Scale the UI to the full renderer output; touch is mapped back below.
+    SDL_RenderSetLogicalSize(renderer, 0, 0);
+    int outputWidth = kWidth;
+    int outputHeight = kHeight;
+    SDL_GetRendererOutputSize(renderer, &outputWidth, &outputHeight);
+    const float renderScaleX = static_cast<float>(outputWidth) / static_cast<float>(kWidth);
+    const float renderScaleY = static_cast<float>(outputHeight) / static_cast<float>(kHeight);
+    SDL_RenderSetScale(renderer, renderScaleX, renderScaleY);
     SDL_Texture* skinTexture = nullptr;
     SDL_Surface* skinSurface = SDL_LoadBMP_RW(
         SDL_RWFromFile("ui/industrial_console.bmp", "rb"), 1);
@@ -430,6 +480,43 @@ int main(int argc, char** argv) {
         else
             model.setStatusMessage("ROM directory is not available. Choose a ROM folder.");
     }
+    model.navigateTo(FrontendScreen::GameLibrary);
+    model.setStatusMessage(model.games().empty()
+        ? "ROM folder ready. Add games with ROM FOLDER or LOAD ROM."
+        : std::to_string(model.games().size()) + " game(s) ready. Tap a cover to play.");
+#ifdef __ANDROID__
+    // This startup hook was missing: without it the background cover downloader
+    // was never launched for an already-imported private ROM folder.
+    callAndroidPickerMethod("importPersistedRomFolder");
+#endif
+
+    std::vector<SDL_Texture*> coverTextures;
+    auto rebuildCoverTextures = [&]() {
+        for (SDL_Texture* texture : coverTextures)
+            if (texture != nullptr) SDL_DestroyTexture(texture);
+        coverTextures.clear();
+        coverTextures.reserve(model.games().size());
+        for (const GameEntry& game : model.games()) {
+            SDL_Texture* texture = nullptr;
+            const std::filesystem::path localCover =
+                game.path.parent_path() / "covers" / (game.title + ".bmp");
+            SDL_RWops* coverFile = SDL_RWFromFile(localCover.string().c_str(), "rb");
+            if (coverFile == nullptr) {
+                const std::filesystem::path sharedCover =
+                    romDirectory / "covers" / (game.title + ".bmp");
+                coverFile = SDL_RWFromFile(sharedCover.string().c_str(), "rb");
+            }
+            if (coverFile != nullptr) {
+                SDL_Surface* surface = SDL_LoadBMP_RW(coverFile, 1);
+                if (surface != nullptr) {
+                    texture = SDL_CreateTextureFromSurface(renderer, surface);
+                    SDL_FreeSurface(surface);
+                }
+            }
+            coverTextures.push_back(texture);
+        }
+    };
+    rebuildCoverTextures();
 
     std::string activeRomPath;
     std::size_t saveActionSelection = 0;
@@ -468,12 +555,23 @@ int main(int argc, char** argv) {
         if (usingSnes9x) {
             model.enterPlaying(selected->title);
             model.setStatusMessage("Snes9x core loaded.");
-        } else if (emulator.loadRom(activeRomPath)) {
+        }
+#ifdef __ANDROID__
+        else {
+            // The in-development C++ CPU/PPU is not a compatibility backend.
+            // Never send retail cartridges into it when the real core fails:
+            // that produced misleading opcode faults and black gameplay screens.
+            emulator.unload();
+            model.setStatusMessage("Snes9x could not start: " + snes9x.status());
+        }
+#else
+        else if (emulator.loadRom(activeRomPath)) {
             model.enterPlaying(selected->title);
-            model.setStatusMessage("Snes9x unavailable; prototype fallback is active.");
+            model.setStatusMessage("Prototype fallback active (incomplete compatibility).");
         } else {
             model.setStatusMessage(snes9x.status() + " / " + emulator.status());
         }
+#endif
     };
     auto goBack = [&]() {
         if (model.screen() == FrontendScreen::Playing) {
@@ -599,6 +697,11 @@ int main(int argc, char** argv) {
         }
     };
     auto handlePointerTap = [&](int x, int y) {
+        // Touching the full-screen game view returns to the library.
+        if (model.screen() == FrontendScreen::Playing) {
+            goBack();
+            return;
+        }
         if (x >= 30 && x <= 304) {
             for (std::size_t i = 0; i < model.mainMenuItems().size(); ++i) {
                 const int top = 164 + static_cast<int>(i) * 46;
@@ -650,22 +753,30 @@ int main(int argc, char** argv) {
             return;
         }
         if (model.screen() == FrontendScreen::GameLibrary &&
-            x >= 356 && x <= 966 && y >= 190 && y < 568 && !model.games().empty()) {
-            const std::size_t start = model.selectedIndex() > 7 ? model.selectedIndex() - 7 : 0;
-            const std::size_t row = static_cast<std::size_t>((y - 190) / 42);
-            const std::size_t index = start + row;
-            if (index < model.games().size() && model.selectIndex(index)) confirm();
+            x >= 356 && x < 962 && y >= 184 && y < 532 && !model.games().empty()) {
+            const std::size_t start = model.selectedIndex() > 5
+                ? model.selectedIndex() - 5 : 0;
+            const int col = (x - 356) / 202;
+            const int row = (y - 184) / 176;
+            if (col >= 0 && col < 3 && row >= 0 && row < 2) {
+                const std::size_t index = start +
+                    static_cast<std::size_t>(row * 3 + col);
+                if (index < model.games().size() && model.selectIndex(index))
+                    launchSelectedGame();
+            }
         }
     };
 
     std::string inputDiagnostic = "INPUT: WAITING FOR TOUCH";
 
     auto handleWindowTap = [&](int windowX, int windowY, const char* source) {
-        float logicalX = 0.0f;
-        float logicalY = 0.0f;
-        SDL_RenderWindowToLogical(renderer, windowX, windowY, &logicalX, &logicalY);
-        const int x = static_cast<int>(logicalX);
-        const int y = static_cast<int>(logicalY);
+        int windowWidth = 0;
+        int windowHeight = 0;
+        SDL_GetWindowSize(window, &windowWidth, &windowHeight);
+        const int x = windowWidth > 0
+            ? static_cast<int>(static_cast<float>(windowX) * kWidth / windowWidth) : windowX;
+        const int y = windowHeight > 0
+            ? static_cast<int>(static_cast<float>(windowY) * kHeight / windowHeight) : windowY;
         inputDiagnostic = std::string(source) + " X " +
             std::to_string(x) + " Y " + std::to_string(y);
         handlePointerTap(x, y);
@@ -724,10 +835,12 @@ int main(int argc, char** argv) {
                     std::error_code dropError;
                     if (std::filesystem::is_directory(droppedPath, dropError) && !dropError) {
                         if (model.scanGameDirectory(droppedPath)) {
+                            rebuildCoverTextures();
                             model.setStatusMessage("Persistent ROM folder imported. " +
                                 std::to_string(model.games().size()) + " supported ROM file(s) ready.");
                         }
                     } else if (model.scanGameDirectory(droppedPath.parent_path())) {
+                        rebuildCoverTextures();
                         const auto& games = model.games();
                         const auto found = std::find_if(games.begin(), games.end(),
                             [&](const GameEntry& game) { return game.path == droppedPath; });
@@ -884,7 +997,8 @@ int main(int argc, char** argv) {
         renderUi(renderer, model, {slots[0].handle, slots[1].handle},
                  emulator, snes9x, usingSnes9x, gameTexture, coreTexture,
                  inputDiagnostic, saveActionSelection, audioVolumePercent,
-                 controllerDeadzone, settingsSelection, cheatInput, skinTexture);
+                 controllerDeadzone, settingsSelection, cheatInput, skinTexture,
+                 coverTextures);
         SDL_Delay(framePacer.delayMilliseconds());
     }
 
@@ -893,6 +1007,8 @@ int main(int argc, char** argv) {
     snes9x.unload();
     if (coreTexture != nullptr) SDL_DestroyTexture(coreTexture);
     for (auto& slot : slots) if (slot.handle != nullptr) SDL_GameControllerClose(slot.handle);
+    for (SDL_Texture* texture : coverTextures)
+        if (texture != nullptr) SDL_DestroyTexture(texture);
     if (skinTexture != nullptr) SDL_DestroyTexture(skinTexture);
     if (gameTexture != nullptr) SDL_DestroyTexture(gameTexture);
     SDL_DestroyRenderer(renderer);

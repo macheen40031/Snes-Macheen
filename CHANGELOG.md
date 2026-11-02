@@ -1,3 +1,31 @@
+## v1.32 — Scaffold sanity version alignment
+
+- Fixes the Android scaffold sanity gate, which was still asserting v1.30/versionCode 40 after the package had advanced to v1.31/versionCode 41.
+- Aligns the sanity check, Android Gradle package metadata, and release documentation on v1.32/versionCode 42.
+- No emulator runtime or ROM behavior changes; this is a release-validation correction.
+
+## v1.31 — Immersive display and controller readiness
+
+- Hides Android status and navigation bars for an edge-to-edge emulator display.
+- Reapplies immersive mode after activity resume and window-focus changes; users can temporarily reveal system bars with an edge swipe.
+- Keeps the existing SDL standardized game-controller path for Bluetooth and USB gamepads, including discovery on startup and hot-plug.
+- Physical controller testing remains required for the user's specific gamepad and Android device.
+- Android version code 41.
+
+## v1.30 — Android Snes9x library lookup fallback
+
+- Tries the absolute path in Android's nativeLibraryDir first, then retries the library soname through the app's linker namespace.
+- Captures every attempted path and the actual dynamic-linker error so missing files can be distinguished from missing dependencies or ABI issues.
+- Android version code 40. Physical-device launch testing remains required.
+
+## v1.29 — ROM diagnostics and video-format hardening
+
+- Reports the exact missing Libretro symbol when the bundled Snes9x core cannot be bound, replacing an opaque generic loader error.
+- Rejects failed ROM reads and files larger than 128 MiB with explicit status messages.
+- Supports both Libretro XRGB8888 and RGB565 output and converts RGB565 safely into the frontend's ARGB8888 framebuffer.
+- Validates video row pitch before reading pixels, preventing malformed or unexpected core frames from being read out of bounds.
+- Host and Android CI validation pending; physical-device Super Mario World gameplay remains the acceptance test.
+
 ## v1.27 — Settings and interface completion
 
 - Adds an audio-volume setting (0–100%, 5% per step) applied to Snes9x stereo samples before SDL audio queuing.

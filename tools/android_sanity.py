@@ -49,8 +49,8 @@ require("gradle-8.13-bin.zip" in wrapper,
         "Gradle wrapper distribution matches the Android plugin requirement")
 require("compileSdk 36" in app_gradle and "minSdk 23" in app_gradle,
         "Android SDK levels are declared")
-require("versionName '1.27'" in app_gradle and "versionCode 37" in app_gradle,
-        "Android package version matches Snes-Macheen v1.27")
+require("versionName '1.32'" in app_gradle and "versionCode 42" in app_gradle,
+        "Android package version matches Snes-Macheen v1.32")
 require("arm64-v8a" in app_gradle and "armeabi-v7a" in app_gradle,
         "64-bit and 32-bit ARM ABIs are declared")
 require("src/main/cpp/CMakeLists.txt" in app_gradle,
@@ -91,6 +91,10 @@ require("SDL_CONTROLLERDEVICEADDED" in sdl_frontend and "SDL_CONTROLLERDEVICEREM
         "SDL frontend handles controller connection lifecycle")
 require("SDL_CONTROLLERAXISMOTION" in sdl_frontend and "SDL_CONTROLLERBUTTONDOWN" in sdl_frontend,
         "SDL frontend handles gamepad buttons and analog axes")
+require("SDL_IsGameController(deviceIndex)" in sdl_frontend and "SDL_GameControllerOpen(deviceIndex)" in sdl_frontend,
+        "SDL opens recognized Bluetooth/USB game controllers through the standardized gamepad API")
+require("SDL_NumJoysticks()" in sdl_frontend and "SDL_CONTROLLERDEVICEADDED" in sdl_frontend,
+        "SDL discovers controllers already paired and controllers connected while the emulator is running")
 require("emulator.setControllerState" in sdl_frontend,
         "SDL controller mapper publishes input to SNES serial ports")
 require("FramePacer" in sdl_frontend and "framesDue" in sdl_frontend,
@@ -99,12 +103,20 @@ require("SDL_CreateTexture" in sdl_frontend and "SDL_UpdateTexture" in sdl_front
         "SDL frontend uploads and presents the emulator ARGB framebuffer")
 require("emulator.loadRom" in sdl_frontend and "emulator.runFrame" in sdl_frontend,
         "SDL game selection launches and advances an emulator session")
+require("#ifdef __ANDROID__" in sdl_frontend and "Never send retail cartridges into it" in sdl_frontend,
+        "Android refuses the incomplete prototype CPU fallback when Snes9x fails")
 require("drawPanel" in sdl_frontend and "SNES-MACHEEN" in sdl_frontend,
         "SDL frontend contains the industrial menu shell")
 require("SDL_MOUSEBUTTONDOWN" in sdl_frontend and "handlePointerTap" in sdl_frontend,
         "SDL frontend accepts touch-generated and mouse pointer taps")
 require("SDL_AndroidGetInternalStoragePath" in sdl_frontend and "create_directories(romDirectory" in sdl_frontend,
         "Android startup prepares a private ROM directory")
+require("WindowInsetsController" in java_bridge and "WindowInsets.Type.statusBars()" in java_bridge and "WindowInsets.Type.navigationBars()" in java_bridge,
+        "Android activity hides status and navigation bars using modern window insets")
+require("BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE" in java_bridge and "SYSTEM_UI_FLAG_IMMERSIVE_STICKY" in java_bridge,
+        "Immersive full-screen mode remains active after focus changes on modern and older Android")
+require("applyImmersiveMode();" in java_bridge and "onWindowFocusChanged" in java_bridge and "onResume()" in java_bridge,
+        "Android reapplies immersive mode on launch, resume, and window focus")
 
 libretro_frontend = (ROOT / "frontend/sdl_frontend.cpp").read_text(encoding="utf-8")
 require('snes9x.loadRom("snes9x_libretro_android.so"' in libretro_frontend,
@@ -121,6 +133,18 @@ require("SDL_GetQueuedAudioSize" in libretro_source and "maxQueuedBytes" in libr
         "Snes9x audio buffering is bounded to prevent runaway latency")
 require("androidNativeLibraryPath" in libretro_source and "nativeLibraryDir" in libretro_source,
         "Android Snes9x core is resolved from the app native-library directory")
+require("tryLoadCore(resolvedCorePath)" in libretro_source and "tryLoadCore(corePath)" in libretro_source,
+        "Android Snes9x loader retries the library soname after the absolute path")
+require("loaderErrors" in libretro_source and "Snes9x core could not be opened" in libretro_source,
+        "Snes9x loader reports each attempted path and its dynamic-linker error")
+require("missing Libretro function:" in libretro_source and "missingSymbol" in libretro_source,
+        "Snes9x loader reports the exact missing Libretro entry point")
+require("kMaximumRomBytes" in libretro_source and "file.bad()" in libretro_source,
+        "ROM loader checks I/O failures and rejects oversized files safely")
+require("kPixelRgb565" in libretro_source and "minimumPitch" in libretro_source,
+        "Libretro video accepts RGB565 and validates row pitch")
+require("std::memcpy" in libretro_source and "red * 255u" in libretro_source,
+        "Libretro RGB565 pixels are safely expanded into ARGB8888")
 require("setControllerPortDevice(0, kDeviceJoypad)" in libretro_source and
         "setControllerPortDevice(1, kDeviceJoypad)" in libretro_source,
         "Libretro core ports are explicitly configured as joypads")
