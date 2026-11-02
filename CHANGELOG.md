@@ -1,3 +1,11 @@
+## v1.31 — Immersive display and controller readiness
+
+- Hides Android status and navigation bars for an edge-to-edge emulator display.
+- Reapplies immersive mode after activity resume and window-focus changes; users can temporarily reveal system bars with an edge swipe.
+- Keeps the existing SDL standardized game-controller path for Bluetooth and USB gamepads, including discovery on startup and hot-plug.
+- Physical controller testing remains required for the user's specific gamepad and Android device.
+- Android version code 41.
+
 ## v1.30 — Android Snes9x library lookup fallback
 
 - Tries the absolute path in Android's nativeLibraryDir first, then retries the library soname through the app's linker namespace.
