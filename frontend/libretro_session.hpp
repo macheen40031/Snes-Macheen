@@ -22,6 +22,10 @@ public:
     bool saveRam(const std::string& path) const;
     bool saveState(const std::string& path);
     bool loadState(const std::string& path);
+    bool addCheat(const std::string& code);
+    bool clearCheats();
+    bool saveCheats() const;
+    const std::vector<std::string>& cheats() const noexcept { return currentCheats; }
 
 private:
     void* library = nullptr;
@@ -34,6 +38,8 @@ private:
     uint16_t pads[2]{};
     uint32_t audioDevice = 0;
     int audioFrequency = 0;
+    std::string currentRomPath;
+    std::vector<std::string> currentCheats;
 
     static LibretroSession* active;
     static bool environment(unsigned command, void* data);
