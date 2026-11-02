@@ -6,15 +6,61 @@
 #include <fstream>
 #include <iterator>
 #include <limits>
+#include <cmath>
+#include <string>
 
 #include <SDL.h>
+#include <dlfcn.h>
 #if defined(__ANDROID__)
-#include <dlfcn.h>
-#else
-#include <dlfcn.h>
+#include <SDL_system.h>
+#include <jni.h>
 #endif
 
 namespace {
+#if defined(__ANDROID__)
+std::string androidNativeLibraryPath(const std::string& libraryName) {
+    auto* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
+    jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
+    if (env == nullptr || activity == nullptr) return libraryName;
+
+    std::string directory;
+    jclass activityClass = env->GetObjectClass(activity);
+    jmethodID getApplicationInfo = activityClass
+        ? env->GetMethodID(activityClass, "getApplicationInfo",
+                           "()Landroid/content/pm/ApplicationInfo;")
+        : nullptr;
+    jobject applicationInfo = getApplicationInfo
+        ? env->CallObjectMethod(activity, getApplicationInfo)
+        : nullptr;
+    if (env->ExceptionCheck()) {
+        env->ExceptionClear();
+        applicationInfo = nullptr;
+    }
+    jclass infoClass = applicationInfo ? env->GetObjectClass(applicationInfo) : nullptr;
+    jfieldID nativeLibraryDir = infoClass
+        ? env->GetFieldID(infoClass, "nativeLibraryDir", "Ljava/lang/String;")
+        : nullptr;
+    jstring path = nativeLibraryDir
+        ? static_cast<jstring>(env->GetObjectField(applicationInfo, nativeLibraryDir))
+        : nullptr;
+    if (env->ExceptionCheck()) env->ExceptionClear();
+    if (path != nullptr) {
+        const char* chars = env->GetStringUTFChars(path, nullptr);
+        if (chars != nullptr) {
+            directory = chars;
+            env->ReleaseStringUTFChars(path, chars);
+        }
+        env->DeleteLocalRef(path);
+    }
+    if (infoClass) env->DeleteLocalRef(infoClass);
+    if (applicationInfo) env->DeleteLocalRef(applicationInfo);
+    if (activityClass) env->DeleteLocalRef(activityClass);
+    env->DeleteLocalRef(activity);
+
+    return directory.empty() ? libraryName : directory + "/" + libraryName;
+}
+#endif
+
 constexpr unsigned kApiVersion = 1;
 constexpr unsigned kEnvSetPixelFormat = 10;
 constexpr unsigned kPixelXrgb8888 = 1;
@@ -91,8 +137,20 @@ LibretroSession::~LibretroSession() { unload(); }
 
 bool LibretroSession::loadRom(const std::string& corePath, const std::string& romPath) {
     unload();
-    library = dlopen(corePath.c_str(), RTLD_NOW | RTLD_LOCAL);
-    if (!library) { message = std::string("Unable to load Snes9x core: ") + dlerror(); return false; }
+#if defined(__ANDROID__)
+    const std::string resolvedCorePath = corePath.find('/') == std::string::npos
+        ? androidNativeLibraryPath(corePath) : corePath;
+#else
+    const std::string& resolvedCorePath = corePath;
+#endif
+    (void)dlerror();
+    library = dlopen(resolvedCorePath.c_str(), RTLD_NOW | RTLD_LOCAL);
+    if (!library) {
+        const char* loaderError = dlerror();
+        message = std::string("Unable to load Snes9x core at ") + resolvedCorePath +
+            ": " + (loaderError ? loaderError : "unknown dynamic loader error");
+        return false;
+    }
     if (!api.load(library)) { message = "Snes9x core is missing required Libretro functions."; unload(); return false; }
     if (api.apiVersion() != kApiVersion) { message = "Unsupported Libretro API version."; unload(); return false; }
 
@@ -110,10 +168,13 @@ bool LibretroSession::loadRom(const std::string& corePath, const std::string& ro
     api.setInputState(inputState);
     api.init();
     initialized = true;
+    api.setControllerPortDevice(0, kDeviceJoypad);
+    api.setControllerPortDevice(1, kDeviceJoypad);
 
     SystemInfo info{};
     api.getSystemInfo(&info);
-    GameInfo game{romPath.c_str(), rom.data(), rom.size(), nullptr};
+    GameInfo game{romPath.c_str(), info.needFullpath ? nullptr : rom.data(),
+                  info.needFullpath ? 0u : rom.size(), nullptr};
     if (!api.loadGame(&game)) {
         message = "Snes9x rejected this ROM format.";
         unload();
@@ -134,7 +195,28 @@ bool LibretroSession::loadRom(const std::string& corePath, const std::string& ro
     api.getAvInfo(&av);
     frameWidth = std::max(1u, av.geometry.baseWidth);
     frameHeight = std::max(1u, av.geometry.baseHeight);
-    message = std::string("Snes9x ") + (info.version ? info.version : "loaded");
+
+    const int sampleRate = std::isfinite(av.timing.sampleRate) &&
+        av.timing.sampleRate >= 8000.0 && av.timing.sampleRate <= 192000.0
+        ? static_cast<int>(std::lround(av.timing.sampleRate)) : 32040;
+    SDL_AudioSpec desired{};
+    desired.freq = sampleRate;
+    desired.format = AUDIO_S16SYS;
+    desired.channels = 2;
+    desired.samples = 1024;
+    desired.callback = nullptr; // Use SDL's thread-safe queued-audio interface.
+    SDL_AudioSpec obtained{};
+    audioDevice = SDL_OpenAudioDevice(nullptr, 0, &desired, &obtained,
+                                      SDL_AUDIO_ALLOW_FREQUENCY_CHANGE);
+    if (audioDevice != 0) {
+        audioFrequency = obtained.freq > 0 ? obtained.freq : sampleRate;
+        SDL_PauseAudioDevice(audioDevice, 0);
+    } else {
+        audioFrequency = 0;
+    }
+
+    message = std::string("Snes9x ") + (info.version ? info.version : "loaded") +
+        (audioDevice != 0 ? " | AUDIO ON" : " | AUDIO UNAVAILABLE");
     return true;
 }
 
@@ -146,7 +228,12 @@ void LibretroSession::unload() noexcept {
     if (library) dlclose(library);
     library = nullptr;
     if (active == this) active = nullptr;
-    if (audioDevice) { SDL_CloseAudioDevice(audioDevice); audioDevice = 0; }
+    if (audioDevice) {
+        SDL_ClearQueuedAudio(audioDevice);
+        SDL_CloseAudioDevice(audioDevice);
+        audioDevice = 0;
+    }
+    audioFrequency = 0;
     pixels.clear();
 }
 
@@ -190,8 +277,33 @@ void LibretroSession::audioSample(int16_t left, int16_t right) {
     audioBatch(sample, 1);
 }
 std::size_t LibretroSession::audioBatch(const int16_t* data, std::size_t frames) {
-    // Audio device initialization is wired in the next audio milestone.
-    (void)data;
+    // Libretro audio callbacks are interleaved stereo signed-16 samples.
+    // Keep at most ~250 ms queued so slow rendering cannot build unbounded
+    // latency or memory use. Dropped excess frames are considered consumed.
+    if (data == nullptr || frames == 0 || active == nullptr ||
+        active->audioDevice == 0 || active->audioFrequency <= 0) {
+        return frames;
+    }
+
+    constexpr std::size_t kBytesPerFrame = 2u * sizeof(int16_t);
+    const uint64_t maxQueuedBytes64 =
+        static_cast<uint64_t>(active->audioFrequency) * kBytesPerFrame / 4u;
+    const Uint32 maxQueuedBytes = static_cast<Uint32>(
+        std::min<uint64_t>(maxQueuedBytes64, std::numeric_limits<Uint32>::max()));
+    const Uint32 queuedBytes = SDL_GetQueuedAudioSize(active->audioDevice);
+    if (queuedBytes >= maxQueuedBytes) return frames;
+
+    const Uint32 availableBytes = maxQueuedBytes - queuedBytes;
+    const std::size_t framesToQueue = std::min(
+        frames, static_cast<std::size_t>(availableBytes / kBytesPerFrame));
+    if (framesToQueue == 0) return frames;
+
+    const std::size_t bytesToQueue = framesToQueue * kBytesPerFrame;
+    if (bytesToQueue > std::numeric_limits<Uint32>::max()) return frames;
+    if (SDL_QueueAudio(active->audioDevice, data,
+                       static_cast<Uint32>(bytesToQueue)) != 0) {
+        active->message = "Snes9x audio queue failed: " + std::string(SDL_GetError());
+    }
     return frames;
 }
 void LibretroSession::inputPoll() {}
