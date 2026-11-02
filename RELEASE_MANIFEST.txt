@@ -1,15 +1,15 @@
 SNES-MACHEEN RELEASE MANIFEST
-Version: 1.24
+Version: 1.25
 Project: Snes-Macheen
 Package: Android APK built by GitHub Actions
-Previous milestone: 1.23
+Previous milestone: 1.24
 Snes9x Libretro backend: integrated; CI verification pending
 Snes9x stereo audio output: implemented; device test pending
-Core resolution: Android nativeLibraryDir; Android build verification pending
-Audio queue: bounded to approximately 250 ms
+Two-slot save states: implemented; CI and device verification pending
+Save-state compatibility: size checked against the active Snes9x core
 Android ABIs: arm64-v8a and armeabi-v7a; CI verification pending
 Host quality gate: pending
 Android Gradle/APK build: pending
-On-device ROM/video/audio/controller verification: pending
-Android versionCode: 34
-Android versionName: 1.24
+On-device ROM/video/audio/controller/save-state verification: pending
+Android versionCode: 35
+Android versionName: 1.25
