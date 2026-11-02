@@ -335,9 +335,11 @@ bool callAndroidPickerMethod(const char* methodName) {
 }
 
 int main(int argc, char** argv) {
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0)
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER | SDL_INIT_EVENTS) != 0)
         return 2;
 
+    // Audio is optional: a missing Android audio device must not prevent the UI/game from launching.
+    SDL_InitSubSystem(SDL_INIT_AUDIO);
     SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "linear");
     SDL_SetHint(SDL_HINT_TOUCH_MOUSE_EVENTS, "0");
     SDL_Window* window = SDL_CreateWindow("Snes-Macheen", SDL_WINDOWPOS_CENTERED,
