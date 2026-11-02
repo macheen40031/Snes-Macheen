@@ -49,8 +49,8 @@ require("gradle-8.13-bin.zip" in wrapper,
         "Gradle wrapper distribution matches the Android plugin requirement")
 require("compileSdk 36" in app_gradle and "minSdk 23" in app_gradle,
         "Android SDK levels are declared")
-require("versionName '1.25'" in app_gradle and "versionCode 35" in app_gradle,
-        "Android package version matches Snes-Macheen v1.25")
+require("versionName '1.26'" in app_gradle and "versionCode 36" in app_gradle,
+        "Android package version matches Snes-Macheen v1.26")
 require("arm64-v8a" in app_gradle and "armeabi-v7a" in app_gradle,
         "64-bit and 32-bit ARM ABIs are declared")
 require("src/main/cpp/CMakeLists.txt" in app_gradle,
@@ -134,6 +134,16 @@ require("SAVE SLOT 1" in sdl_frontend and "LOAD SLOT 1" in sdl_frontend and
         "SDL saves screen exposes two save-state slots")
 require("performSaveAction" in sdl_frontend and "GamepadControl::DpadUp" in sdl_frontend,
         "Save-state actions are reachable from keyboard, touch and controller navigation")
+
+require("retro_cheat_set" in libretro_source and "retro_cheat_reset" in libretro_source,
+        "Libretro cheat set/reset API is bound to the Snes9x core")
+require('romPath + ".cht"' in libretro_source and "currentCheats.size() < 32u" in libretro_source,
+        "Cheat codes are restored from a per-ROM sidecar with a bounded slot count")
+require("SDL_TEXTINPUT" in sdl_frontend and "SDL_StartTextInput" in sdl_frontend,
+        "Cheat entry accepts text input from the SDL keyboard/Android soft keyboard")
+require('"CHEATS"' in sdl_frontend and '"ADD CHEAT"' in sdl_frontend and
+        '"CLEAR ALL"' in sdl_frontend,
+        "Industrial UI exposes cheat entry and clear-all controls")
 
 if errors:
     print(f"ANDROID SCAFFOLD SANITY: FAILED ({len(errors)} failures / {checks} checks)")
