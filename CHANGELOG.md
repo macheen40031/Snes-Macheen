@@ -1,3 +1,11 @@
+## v1.29 — ROM diagnostics and video-format hardening
+
+- Reports the exact missing Libretro symbol when the bundled Snes9x core cannot be bound, replacing an opaque generic loader error.
+- Rejects failed ROM reads and files larger than 128 MiB with explicit status messages.
+- Supports both Libretro XRGB8888 and RGB565 output and converts RGB565 safely into the frontend's ARGB8888 framebuffer.
+- Validates video row pitch before reading pixels, preventing malformed or unexpected core frames from being read out of bounds.
+- Host and Android CI validation pending; physical-device Super Mario World gameplay remains the acceptance test.
+
 ## v1.27 — Settings and interface completion
 
 - Adds an audio-volume setting (0–100%, 5% per step) applied to Snes9x stereo samples before SDL audio queuing.
