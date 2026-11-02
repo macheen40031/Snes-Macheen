@@ -1,5 +1,8 @@
 #include "emulator_session.hpp"
 
+#include <iomanip>
+#include <sstream>
+
 bool EmulatorSession::loadRom(const std::string& path, CartridgeMapping mapping) {
     if (loaded()) saveBatteryRam();
     memoryBus.unloadCartridge();
@@ -37,7 +40,19 @@ std::size_t EmulatorSession::runInstructions(std::size_t instructionBudget) {
     for (; executed < instructionBudget; ++executed) {
         if (!processor.step(memoryBus)) {
             currentState = State::Faulted;
-            currentStatus = "CPU stopped on an unsupported opcode. Core instruction coverage is incomplete.";
+            const uint16_t faultAddress = static_cast<uint16_t>(processor.PC - 1u);
+            const uint32_t bankAddress =
+                (static_cast<uint32_t>(processor.PB) << 16) | faultAddress;
+            const uint8_t opcode = memoryBus.read(bankAddress);
+            std::ostringstream diagnostic;
+            diagnostic << "UNSUPPORTED OPCODE $" << std::uppercase << std::hex
+                       << std::setfill('0') << std::setw(2)
+                       << static_cast<unsigned>(opcode)
+                       << " AT $" << std::setw(2)
+                       << static_cast<unsigned>(processor.PB) << ":"
+                       << std::setw(4) << faultAddress
+                       << " — CPU CORE COVERAGE INCOMPLETE";
+            currentStatus = diagnostic.str();
             break;
         }
         if (processor.stopped) {
