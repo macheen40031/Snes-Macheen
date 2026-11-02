@@ -30,7 +30,7 @@ private:
     unsigned frameWidth = 256;
     unsigned frameHeight = 224;
     uint16_t pads[2]{};
-    void* audioDevice = nullptr;
+    uint32_t audioDevice = 0;
 
     static LibretroSession* active;
     static bool environment(unsigned command, void* data);
