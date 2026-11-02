@@ -25,13 +25,13 @@ namespace {
 constexpr int kWidth = 1000;
 constexpr int kHeight = 620;
 constexpr SDL_Color kBackground{12, 17, 23, 255};
-constexpr SDL_Color kPanel{28, 35, 43, 255};
+
 constexpr SDL_Color kPanelLight{66, 77, 87, 255};
 constexpr SDL_Color kPanelDark{8, 12, 17, 255};
 constexpr SDL_Color kText{226, 235, 242, 255};
 constexpr SDL_Color kMuted{142, 158, 171, 255};
 constexpr SDL_Color kBlue{74, 174, 255, 255};
-constexpr SDL_Color kBlueDark{10, 65, 105, 255};
+
 constexpr SDL_Color kRed{238, 54, 64, 255};
 constexpr SDL_Color kRedDark{93, 22, 30, 255};
 constexpr SDL_Color kSteel{48, 57, 66, 255};

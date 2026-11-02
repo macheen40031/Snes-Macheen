@@ -62,10 +62,14 @@ for path in ROOT.rglob("*"):
         errors.append(f"Source is not valid UTF-8: {path.relative_to(ROOT)}")
         continue
     rel = path.relative_to(ROOT)
-    for marker in ("<<<<<<< ", "=======\n", ">>>>>>> "):
-        if marker in text:
-            errors.append(f"Possible merge-conflict marker in {rel}: {marker.strip()}")
-            break
+    import re
+    conflict_patterns = (
+        r"^<<<<<<< .+$",
+        r"^=======$",
+        r"^>>>>>>> .+$",
+    )
+    if any(re.search(pattern, text, re.MULTILINE) for pattern in conflict_patterns):
+        errors.append(f"Possible merge-conflict marker in {rel}")
 
 if errors:
     print("SOURCE SANITY: FAILED")

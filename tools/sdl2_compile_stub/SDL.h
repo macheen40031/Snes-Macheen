@@ -33,3 +33,12 @@ Uint32 SDL_RegisterEvents(int); int SDL_PushEvent(SDL_Event*); int SDL_PollEvent
 int SDL_SetRenderDrawColor(SDL_Renderer*,Uint8,Uint8,Uint8,Uint8); int SDL_RenderClear(SDL_Renderer*);
 int SDL_RenderFillRect(SDL_Renderer*,const SDL_Rect*); int SDL_RenderDrawRect(SDL_Renderer*,const SDL_Rect*);
 int SDL_RenderDrawLine(SDL_Renderer*,int,int,int,int); void SDL_RenderPresent(SDL_Renderer*);
+
+// SDL2 surface and image-loading API used by the artwork loader.
+struct SDL_Surface;
+struct SDL_RWops;
+
+SDL_RWops* SDL_RWFromFile(const char*, const char*);
+SDL_Surface* SDL_LoadBMP_RW(SDL_RWops*, int);
+SDL_Texture* SDL_CreateTextureFromSurface(SDL_Renderer*, SDL_Surface*);
+void SDL_FreeSurface(SDL_Surface*);
