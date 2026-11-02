@@ -142,14 +142,23 @@ void drawPanel(SDL_Renderer* renderer, SDL_Rect rect) {
 
 void drawButton(SDL_Renderer* renderer, SDL_Rect rect, const std::string& label,
                 bool selected) {
-    fill(renderer, rect, selected ? SDL_Color{66, 25, 31, 255} : SDL_Color{19, 25, 31, 255});
-    outline(renderer, rect, selected ? kRed : kSteelHighlight, selected ? 3 : 1);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+    fill(renderer, rect, selected ? SDL_Color{82, 25, 34, 218}
+                                  : SDL_Color{5, 12, 19, 166});
+    // A narrow top highlight and lower shadow create a raised steel switch.
+    fill(renderer, SDL_Rect{rect.x + 4, rect.y + 3, rect.w - 8, 2},
+         SDL_Color{177, 191, 202, selected ? 150 : 85});
+    fill(renderer, SDL_Rect{rect.x + 4, rect.y + rect.h - 5, rect.w - 8, 2},
+         SDL_Color{0, 0, 0, 155});
+    outline(renderer, rect, selected ? kRed : kSteelHighlight, selected ? 2 : 1);
     outline(renderer, SDL_Rect{rect.x + 3, rect.y + 3, rect.w - 6, rect.h - 6},
             selected ? kRedDark : kPanelDark, 1);
     if (selected) {
         fill(renderer, SDL_Rect{rect.x + 7, rect.y + 7, 3, rect.h - 14}, kRed);
         fill(renderer, SDL_Rect{rect.x + rect.w - 10, rect.y + 7, 3, rect.h - 14}, kRed);
+        drawBolt(renderer, rect.x + rect.w - 16, rect.y + rect.h / 2);
     }
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
     drawText(renderer, rect.x + 18, rect.y + 12, label, 2, kText);
 }
 
