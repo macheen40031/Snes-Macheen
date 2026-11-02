@@ -106,6 +106,8 @@ public:
     CORE_FN(serializeSize, std::size_t(*)());
     CORE_FN(serialize, bool(*)(void*, std::size_t));
     CORE_FN(unserialize, bool(*)(const void*, std::size_t));
+    CORE_FN(cheatReset, void(*)());
+    CORE_FN(cheatSet, void(*)(unsigned, bool, const char*));
 
     template<class T> bool bind(void* handle, T& target, const char* symbol) {
         target = reinterpret_cast<T>(dlsym(handle, symbol));
@@ -130,7 +132,9 @@ public:
             bind(h, getMemorySize, "retro_get_memory_size") &&
             bind(h, serializeSize, "retro_serialize_size") &&
             bind(h, serialize, "retro_serialize") &&
-            bind(h, unserialize, "retro_unserialize");
+            bind(h, unserialize, "retro_unserialize") &&
+            bind(h, cheatReset, "retro_cheat_reset") &&
+            bind(h, cheatSet, "retro_cheat_set");
     }
 };
 #undef CORE_FN
@@ -187,6 +191,20 @@ bool LibretroSession::loadRom(const std::string& corePath, const std::string& ro
         return false;
     }
     gameLoaded = true;
+    currentRomPath = romPath;
+    currentCheats.clear();
+    api.cheatReset();
+    {
+        std::ifstream cheatFile(romPath + ".cht");
+        std::string code;
+        while (currentCheats.size() < 32u && std::getline(cheatFile, code)) {
+            if (!code.empty() && code.size() <= 128u &&
+                code.find_first_of("\\r\\n") == std::string::npos) {
+                api.cheatSet(static_cast<unsigned>(currentCheats.size()), true, code.c_str());
+                currentCheats.push_back(code);
+            }
+        }
+    }
     // Restore the cartridge battery RAM sidecar when one exists.
     constexpr unsigned kSaveRam = 0;
     const auto saveSize = api.getMemorySize(kSaveRam);
@@ -234,6 +252,8 @@ void LibretroSession::unload() noexcept {
     if (library) dlclose(library);
     library = nullptr;
     if (active == this) active = nullptr;
+    currentRomPath.clear();
+    currentCheats.clear();
     if (audioDevice) {
         SDL_ClearQueuedAudio(audioDevice);
         SDL_CloseAudioDevice(audioDevice);
@@ -257,6 +277,73 @@ bool LibretroSession::saveRam(const std::string& path) const {
     std::ofstream out(path, std::ios::binary | std::ios::trunc);
     out.write(data, static_cast<std::streamsize>(size));
     return out.good();
+}
+
+bool LibretroSession::saveCheats() const {
+    if (currentRomPath.empty()) return false;
+    const std::string path = currentRomPath + ".cht";
+    if (currentCheats.empty()) {
+        std::remove(path.c_str());
+        return true;
+    }
+    const std::string temporary = path + ".tmp";
+    {
+        std::ofstream output(temporary, std::ios::binary | std::ios::trunc);
+        if (!output) return false;
+        for (const auto& code : currentCheats) output << code << '\\n';
+        if (!output.good()) {
+            output.close();
+            std::remove(temporary.c_str());
+            return false;
+        }
+    }
+    if (std::rename(temporary.c_str(), path.c_str()) != 0) {
+        std::remove(temporary.c_str());
+        return false;
+    }
+    return true;
+}
+
+bool LibretroSession::addCheat(const std::string& code) {
+    if (!gameLoaded || active != this || !api.cheatSet) {
+        message = "Load a Snes9x game before adding cheats.";
+        return false;
+    }
+    if (code.empty() || code.size() > 128u ||
+        code.find_first_of("\\r\\n") != std::string::npos ||
+        currentCheats.size() >= 32u) {
+        message = "Cheat must be 1-128 characters; up to 32 codes are supported.";
+        return false;
+    }
+    for (unsigned char ch : code) {
+        if (ch < 0x20u || ch > 0x7Eu) {
+            message = "Cheat code contains unsupported characters.";
+            return false;
+        }
+    }
+    api.cheatSet(static_cast<unsigned>(currentCheats.size()), true, code.c_str());
+    currentCheats.push_back(code);
+    if (!saveCheats()) {
+        message = "Cheat applied, but its sidecar file could not be saved.";
+        return false;
+    }
+    message = "Cheat submitted to Snes9x and saved.";
+    return true;
+}
+
+bool LibretroSession::clearCheats() {
+    if (!gameLoaded || active != this || !api.cheatReset) {
+        message = "Load a Snes9x game before clearing cheats.";
+        return false;
+    }
+    api.cheatReset();
+    currentCheats.clear();
+    if (!saveCheats()) {
+        message = "Cheats cleared in memory, but the sidecar file could not be removed.";
+        return false;
+    }
+    message = "All cheats cleared.";
+    return true;
 }
 
 bool LibretroSession::saveState(const std::string& path) {
