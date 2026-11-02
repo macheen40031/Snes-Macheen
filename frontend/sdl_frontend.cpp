@@ -185,6 +185,7 @@ void renderUi(SDL_Renderer* renderer, const FrontendModel& model,
               const EmulatorSession& emulator, const LibretroSession& snes9x,
               bool usingSnes9x, SDL_Texture* gameTexture, SDL_Texture* coreTexture,
               const std::string& inputDiagnostic,
+              std::size_t saveActionSelection,
               SDL_Texture* skinTexture) {
     color(renderer, kBackground);
     SDL_RenderClear(renderer);
@@ -724,7 +725,7 @@ int main(int argc, char** argv) {
         }
         renderUi(renderer, model, {slots[0].handle, slots[1].handle},
                  emulator, snes9x, usingSnes9x, gameTexture, coreTexture,
-                 inputDiagnostic, skinTexture);
+                 inputDiagnostic, saveActionSelection, skinTexture);
         SDL_Delay(framePacer.delayMilliseconds());
     }
 
