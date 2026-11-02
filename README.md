@@ -1,4 +1,4 @@
-# Snes-Macheen v1.31
+# Snes-Macheen v1.32
 
 Snes-Macheen is an Android/desktop SNES emulator frontend with an industrial console UI. Version 1.23 introduced the Libretro Snes9x backend for Android. On Android, Snes9x is now the only gameplay backend; the incomplete in-development C++ core is never used as a fallback for retail cartridges.
 
