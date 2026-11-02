@@ -13,7 +13,8 @@ union SDL_Event { uint32_t type; SDL_KeyboardEvent key; SDL_ControllerDeviceEven
 constexpr Uint32 SDL_INIT_VIDEO=1, SDL_INIT_GAMECONTROLLER=2, SDL_INIT_EVENTS=4, SDL_INIT_AUDIO=8;
 constexpr int SDL_WINDOWPOS_CENTERED=0, SDL_WINDOW_RESIZABLE=1, SDL_WINDOW_ALLOW_HIGHDPI=2;
 constexpr Uint32 SDL_RENDERER_ACCELERATED=1, SDL_RENDERER_PRESENTVSYNC=2, SDL_RENDERER_SOFTWARE=4;
-constexpr int SDL_ENABLE=1, SDL_TEXTUREACCESS_STREAMING=1;\nconstexpr int SDL_BLENDMODE_NONE=0, SDL_BLENDMODE_BLEND=1;
+constexpr int SDL_ENABLE=1, SDL_TEXTUREACCESS_STREAMING=1;
+constexpr int SDL_BLENDMODE_NONE=0, SDL_BLENDMODE_BLEND=1;
 constexpr Uint32 SDL_PIXELFORMAT_ARGB8888=0x16362004u;
 constexpr int SDLK_UP=1, SDLK_DOWN=2, SDLK_LEFT=3, SDLK_RIGHT=4, SDLK_RETURN=5, SDLK_SPACE=6, SDLK_ESCAPE=7;
 #define SDL_HINT_RENDER_SCALE_QUALITY "SDL_RENDER_SCALE_QUALITY"
@@ -30,7 +31,8 @@ int SDL_NumJoysticks(); int SDL_IsGameController(int); SDL_GameController* SDL_G
 SDL_Joystick* SDL_GameControllerGetJoystick(SDL_GameController*); SDL_JoystickID SDL_JoystickInstanceID(SDL_Joystick*);
 const char* SDL_GameControllerName(SDL_GameController*); void SDL_GameControllerClose(SDL_GameController*);
 Uint32 SDL_RegisterEvents(int); int SDL_PushEvent(SDL_Event*); int SDL_PollEvent(SDL_Event*); void SDL_free(void*); void SDL_Delay(Uint32);
-int SDL_SetRenderDrawBlendMode(SDL_Renderer*,int);\nint SDL_SetRenderDrawColor(SDL_Renderer*,Uint8,Uint8,Uint8,Uint8); int SDL_RenderClear(SDL_Renderer*);
+int SDL_SetRenderDrawBlendMode(SDL_Renderer*,int);
+int SDL_SetRenderDrawColor(SDL_Renderer*,Uint8,Uint8,Uint8,Uint8); int SDL_RenderClear(SDL_Renderer*);
 int SDL_RenderFillRect(SDL_Renderer*,const SDL_Rect*); int SDL_RenderDrawRect(SDL_Renderer*,const SDL_Rect*);
 int SDL_RenderDrawLine(SDL_Renderer*,int,int,int,int); void SDL_RenderPresent(SDL_Renderer*);
 
