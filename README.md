@@ -39,6 +39,12 @@ Snes-Macheen is an Android/desktop SNES emulator frontend with an industrial con
 - Reports the exact unsupported 65C816 opcode and program-bank address when the prototype fallback faults.
 - Preserves the existing ROM picker, persistent ROM folder, controller navigation, and industrial interface.
 
+## v1.30 Android core lookup fallback
+
+- Attempts the app-private `nativeLibraryDir` absolute path and then the Android linker soname lookup for the bundled Snes9x core.
+- Reports each attempted path and the actual dynamic-linker error rather than a vague missing-library message.
+- Physical-device verification is still required; the APK must be installed and Super Mario World launched on Android.
+
 ## v1.29 ROM and video compatibility hardening
 
 - Reports the exact missing Libretro entry point when Snes9x cannot be loaded.
@@ -56,7 +62,7 @@ Snes-Macheen is an Android/desktop SNES emulator frontend with an industrial con
 
 ## v1.30–v1.32 compatibility work
 
-- v1.30: verify ROM import, copier-header handling, cartridge metadata, and LoROM/HiROM detection against legally dumped test images.
+- v1.31: verify ROM import, copier-header handling, cartridge metadata, and LoROM/HiROM detection against legally dumped test images.
 - v1.30: validate Libretro video pixel format, pitch, framebuffer resizing, aspect ratio, and first-frame presentation.
 - v1.31: validate SNES controller mapping, frame pacing, audio synchronization, SRAM persistence, and state restore.
 - v1.32: add repeatable compatibility checks and a physical-device acceptance run using a legally obtained Super Mario World dump. No copyrighted ROM is stored in the repository or CI artifacts.
