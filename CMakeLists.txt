@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 
-project(SnesMacheen VERSION 1.23 LANGUAGES CXX)
+project(SnesMacheen VERSION 1.24 LANGUAGES CXX)
 
 include(CTest)
 option(SNES_STRICT_WARNINGS "Treat compiler warnings as errors" OFF)
