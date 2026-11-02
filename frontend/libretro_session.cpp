@@ -157,12 +157,29 @@ bool LibretroSession::loadRom(const std::string& corePath, const std::string& ro
 #else
     const std::string& resolvedCorePath = corePath;
 #endif
-    (void)dlerror();
-    library = dlopen(resolvedCorePath.c_str(), RTLD_NOW | RTLD_LOCAL);
-    if (!library) {
-        const char* loaderError = dlerror();
-        message = std::string("Unable to load Snes9x core at ") + resolvedCorePath +
-            ": " + (loaderError ? loaderError : "unknown dynamic loader error");
+    // Android may expose app-bundled JNI libraries through the app's
+    // nativeLibraryDir, while the class-loader namespace can also resolve
+    // the same library by its soname. Try both before reporting a hard error.
+    std::string loaderErrors;
+    auto tryLoadCore = [&](const std::string& candidate) {
+        if (candidate.empty()) return false;
+        (void)dlerror();
+        library = dlopen(candidate.c_str(), RTLD_NOW | RTLD_LOCAL);
+        if (library != nullptr) return true;
+        const char* error = dlerror();
+        if (!loaderErrors.empty()) loaderErrors += " | ";
+        loaderErrors += candidate + ": " +
+            (error != nullptr ? error : "unknown dynamic loader error");
+        return false;
+    };
+
+    bool coreLoaded = tryLoadCore(resolvedCorePath);
+#if defined(__ANDROID__)
+    if (!coreLoaded && resolvedCorePath != corePath)
+        coreLoaded = tryLoadCore(corePath);
+#endif
+    if (!coreLoaded) {
+        message = "Snes9x core could not be opened. Tried: " + loaderErrors;
         return false;
     }
     if (!api.load(library)) {
