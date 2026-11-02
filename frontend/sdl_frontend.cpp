@@ -394,37 +394,6 @@ bool callAndroidPickerMethod(const char* methodName) {
     return success;
 }
 
-bool callAndroidStringMethod(const char* methodName, const std::string& value) {
-    auto* env = static_cast<JNIEnv*>(SDL_AndroidGetJNIEnv());
-    jobject activity = static_cast<jobject>(SDL_AndroidGetActivity());
-    if (env == nullptr || activity == nullptr) return false;
-    jclass activityClass = env->GetObjectClass(activity);
-    if (activityClass == nullptr) {
-        env->DeleteLocalRef(activity);
-        return false;
-    }
-    jmethodID method = env->GetStaticMethodID(
-        activityClass, methodName, "(Ljava/lang/String;)V");
-    if (method == nullptr) {
-        if (env->ExceptionCheck()) env->ExceptionClear();
-        env->DeleteLocalRef(activityClass);
-        env->DeleteLocalRef(activity);
-        return false;
-    }
-    jstring argument = env->NewStringUTF(value.c_str());
-    if (argument == nullptr) {
-        env->DeleteLocalRef(activityClass);
-        env->DeleteLocalRef(activity);
-        return false;
-    }
-    env->CallStaticVoidMethod(activityClass, method, argument);
-    const bool success = !env->ExceptionCheck();
-    if (!success) env->ExceptionClear();
-    env->DeleteLocalRef(argument);
-    env->DeleteLocalRef(activityClass);
-    env->DeleteLocalRef(activity);
-    return success;
-}
 #endif
 }
 
