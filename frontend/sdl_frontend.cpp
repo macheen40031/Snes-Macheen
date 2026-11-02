@@ -389,7 +389,6 @@ int main(int argc, char** argv) {
     }
 
     std::string activeRomPath;
-    std::string activeRomPath;
     auto launchSelectedGame = [&]() {
         const GameEntry* selected = model.selectedGame();
         if (selected == nullptr) {
@@ -651,7 +650,7 @@ int main(int argc, char** argv) {
                 for (std::size_t frame = 0; frame < framesDue; ++frame) snes9x.runFrame();
                 const auto& pixels = snes9x.framebuffer();
                 if (!pixels.empty()) {
-                    if (coreTexture == nullptr || SDL_QueryTexture(coreTexture, nullptr, nullptr, nullptr, nullptr) != 0) {
+                    if (coreTexture == nullptr) {
                         if (coreTexture) SDL_DestroyTexture(coreTexture);
                         coreTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888,
                             SDL_TEXTUREACCESS_STREAMING, static_cast<int>(snes9x.width()),
