@@ -617,11 +617,13 @@ int main(int argc, char** argv) {
         if (model.screen() == FrontendScreen::Settings && x >= 356 && x <= 900) {
             if (y >= 206 && y < 252) {
                 settingsSelection = 0;
-                adjustSetting(x < 610 ? -1 : 1);
+                if (x < 550) adjustSetting(-1);
+                else if (x >= 660) adjustSetting(1);
             } else if (y >= 270 && y < 316) {
                 settingsSelection = 1;
-                adjustSetting(x < 610 ? -1 : 1);
-            } else if (y >= 334 && y < 380) {
+                if (x < 550) adjustSetting(-1);
+                else if (x >= 660) adjustSetting(1);
+            } else if (y >= 334 && y < 380 && x <= 850) {
                 settingsSelection = 2;
                 resetSettings();
             }
